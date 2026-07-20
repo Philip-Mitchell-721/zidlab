@@ -65,7 +65,26 @@ spec:
       # We route via Gateway API HTTPRoute, not the chart's Ingress.
       ingress:
         enabled: false
-      # Phase 2: add grafana.ini [auth.generic_oauth] here to wire Grafana into Authentik SSO.
+      # OIDC client id/secret arrive as GF_AUTH_* env vars from the grafana-oidc SOPS secret.
+      # Grafana env overrides grafana.ini, so no credentials sit in these values.
+      envFromSecret: grafana-oidc
+      grafana.ini:
+        server:
+          # Grafana builds the OAuth redirect_uri from this — must match the Authentik provider.
+          root_url: "https://grafana.${SECRET_DOMAIN}"
+        auth.generic_oauth:
+          enabled: true
+          name: Authentik
+          scopes: "openid email profile"
+          auth_url: "https://auth.${SECRET_DOMAIN}/application/o/authorize/"
+          token_url: "https://auth.${SECRET_DOMAIN}/application/o/token/"
+          api_url: "https://auth.${SECRET_DOMAIN}/application/o/userinfo/"
+          # Authentik 'authentik Admins' group -> Grafana Admin; everyone else -> Viewer.
+          role_attribute_path: "contains(groups, 'authentik Admins') && 'Admin' || 'Viewer'"
+          allow_assign_grafana_admin: true
+          allow_sign_up: true
+          # keep the native admin/password login form as a fallback; no auto-redirect yet
+          auto_login: false
 
     # Cilium provides kube-proxy replacement — there is no kube-proxy to scrape.
     kubeProxy:
