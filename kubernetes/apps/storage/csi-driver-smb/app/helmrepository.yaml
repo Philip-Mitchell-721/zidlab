@@ -1,0 +1,9 @@
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: csi-driver-smb
+spec:
+  interval: 1h
+  # no OCI chart published — classic Helm repo (like longhorn)
+  url: https://raw.githubusercontent.com/kubernetes-csi/csi-driver-smb/master/charts
