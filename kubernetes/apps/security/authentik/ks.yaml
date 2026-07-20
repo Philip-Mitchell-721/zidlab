@@ -1,0 +1,23 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: authentik
+spec:
+  interval: 1h
+  path: ./kubernetes/apps/security/authentik/app
+  # Wait for the database Cluster to be Ready (and its -app secret to exist).
+  dependsOn:
+    - name: authentik-postgres
+      namespace: security
+  postBuild:
+    substituteFrom:
+      - name: cluster-secrets
+        kind: Secret
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  targetNamespace: security
+  wait: false

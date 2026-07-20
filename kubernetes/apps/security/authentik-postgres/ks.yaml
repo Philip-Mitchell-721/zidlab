@@ -1,0 +1,30 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: authentik-postgres
+spec:
+  interval: 1h
+  path: ./kubernetes/apps/security/authentik-postgres/app
+  prune: true
+  # Needs the postgresql.cnpg.io CRDs to exist first.
+  dependsOn:
+    - name: cloudnative-pg
+      namespace: cnpg-system
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  targetNamespace: security
+  # Block until the database Cluster reports Ready, so authentik (which depends on
+  # this Kustomization) only starts once its DB — and the generated -app secret — exist.
+  healthChecks:
+    - apiVersion: postgresql.cnpg.io/v1
+      kind: Cluster
+      name: authentik-postgres
+      namespace: security
+  healthCheckExprs:
+    - apiVersion: postgresql.cnpg.io/v1
+      kind: Cluster
+      failed: status.conditions.filter(e, e.type == 'Ready').all(e, e.status == 'False')
+      current: status.conditions.filter(e, e.type == 'Ready').all(e, e.status == 'True')

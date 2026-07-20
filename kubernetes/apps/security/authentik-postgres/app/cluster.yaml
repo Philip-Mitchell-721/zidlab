@@ -1,0 +1,22 @@
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: authentik-postgres
+spec:
+  # Single primary for now. Longhorn already replicates the data volume 3x, so a lost
+  # node is recovered by re-attaching the volume + rescheduling the primary.
+  # HA upgrade path: bump to 2-3 instances AND put these volumes on a reduced-replica
+  # Longhorn StorageClass, otherwise you double-replicate (CNPG replicas x Longhorn replicas).
+  instances: 1
+  storage:
+    size: 10Gi
+    storageClass: longhorn
+  bootstrap:
+    initdb:
+      database: authentik
+      owner: authentik
+      # authentik's search uses pg_trgm; create it up front as superuser so authentik's
+      # own "CREATE EXTENSION IF NOT EXISTS" during migrations is a no-op.
+      postInitApplicationSQL:
+        - CREATE EXTENSION IF NOT EXISTS pg_trgm;

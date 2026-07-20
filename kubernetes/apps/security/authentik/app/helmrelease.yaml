@@ -1,0 +1,56 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: authentik
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: authentik
+  interval: 1h
+  values:
+    # global.env / global.envFrom apply to BOTH the server and worker deployments.
+    # In the pod spec, env: (global.env) wins over envFrom:, and among envFrom sources
+    # the chart's own config secret is listed first, so authentik-secret (below) overrides
+    # the chart's empty secret_key. Net effect:
+    #   - DB password  <- CNPG-generated "authentik-postgres-app" secret (never in git)
+    #   - secret_key + bootstrap creds <- SOPS "authentik-secret"
+    #   - host/name/user/port <- authentik.postgresql.* values (non-secret)
+    global:
+      env:
+        - name: AUTHENTIK_POSTGRESQL__PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: authentik-postgres-app
+              key: password
+      envFrom:
+        - secretRef:
+            name: authentik-secret
+    authentik:
+      error_reporting:
+        enabled: false
+      postgresql:
+        host: authentik-postgres-rw
+        name: authentik
+        user: authentik
+        port: 5432
+    # Use the external CNPG Cluster, not the chart's bundled Postgres.
+    postgresql:
+      enabled: false
+    server:
+      # Ingress off — we route via Gateway API HTTPRoute instead.
+      ingress:
+        enabled: false
+      resources:
+        requests:
+          cpu: 100m
+          memory: 512Mi
+        limits:
+          memory: 1Gi
+    worker:
+      resources:
+        requests:
+          cpu: 100m
+          memory: 512Mi
+        limits:
+          memory: 1Gi
