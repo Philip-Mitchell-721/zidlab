@@ -1,0 +1,72 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: kube-prometheus-stack
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: kube-prometheus-stack
+  interval: 1h
+  timeout: 15m
+  values:
+    # CRDs are pre-installed cluster-wide by bootstrap/helmfile.d/00-crds.yaml.
+    crds:
+      enabled: false
+
+    alertmanager:
+      alertmanagerSpec:
+        storage:
+          volumeClaimTemplate:
+            spec:
+              storageClassName: longhorn
+              accessModes: ["ReadWriteOnce"]
+              resources:
+                requests:
+                  storage: 2Gi
+
+    prometheus:
+      prometheusSpec:
+        # Scrape EVERY ServiceMonitor/PodMonitor/etc. already in the cluster (the 13 that
+        # have been emitting into the void), not just resources this chart labels as its own.
+        serviceMonitorSelectorNilUsesHelmValues: false
+        podMonitorSelectorNilUsesHelmValues: false
+        probeSelectorNilUsesHelmValues: false
+        ruleSelectorNilUsesHelmValues: false
+        scrapeConfigSelectorNilUsesHelmValues: false
+        # TSDB is a grower — cap it well under the PVC size (planned-services.md).
+        retention: 15d
+        retentionSize: 17GiB
+        resources:
+          requests:
+            cpu: 100m
+            memory: 512Mi
+          limits:
+            memory: 2Gi
+        storageSpec:
+          volumeClaimTemplate:
+            spec:
+              storageClassName: longhorn
+              accessModes: ["ReadWriteOnce"]
+              resources:
+                requests:
+                  storage: 20Gi
+
+    grafana:
+      # Admin login comes from the SOPS secret; no password in git.
+      admin:
+        existingSecret: grafana-admin
+        userKey: admin-user
+        passwordKey: admin-password
+      persistence:
+        enabled: true
+        storageClassName: longhorn
+        size: 5Gi
+      # We route via Gateway API HTTPRoute, not the chart's Ingress.
+      ingress:
+        enabled: false
+      # Phase 2: add grafana.ini [auth.generic_oauth] here to wire Grafana into Authentik SSO.
+
+    # Cilium provides kube-proxy replacement — there is no kube-proxy to scrape.
+    kubeProxy:
+      enabled: false

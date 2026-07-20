@@ -1,0 +1,15 @@
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: OCIRepository
+metadata:
+  name: kube-prometheus-stack
+spec:
+  interval: 15m
+  layerSelector:
+    mediaType: application/vnd.cncf.helm.chart.content.v1.tar+gzip
+    operation: copy
+  ref:
+    # Matches the CRD version pre-installed by bootstrap/helmfile.d/00-crds.yaml.
+    # Bump this and that file together (renovate handles both).
+    tag: 83.4.0
+  url: oci://ghcr.io/prometheus-community/charts/kube-prometheus-stack
