@@ -1,0 +1,59 @@
+---
+# ABS config (SQLite DB + settings) — small, replicated block.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: abs-config
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 5Gi
+---
+# ABS metadata (covers, cache, backups) — where cover art lives, NOT the share.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: abs-metadata
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 10Gi
+---
+# The media library, read-only, straight off the Windows SMB share via csi-driver-smb.
+# Whole //DESKTOP/Videos share mounted once; ABS points libraries at subfolders
+# (/library/Audio Books, /library/EBooks).
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: abs-library
+spec:
+  capacity:
+    storage: 1Ti          # arbitrary — SMB ignores it
+  accessModes: ["ReadOnlyMany"]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  mountOptions: ["ro", "vers=3.0", "noperm"]
+  csi:
+    driver: smb.csi.k8s.io
+    volumeHandle: abs-library
+    volumeAttributes:
+      source: //192.168.0.25/Videos
+    nodeStageSecretRef:
+      name: smb-creds
+      namespace: media
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: abs-library
+spec:
+  accessModes: ["ReadOnlyMany"]
+  storageClassName: ""
+  volumeName: abs-library
+  resources:
+    requests:
+      storage: 1Ti
