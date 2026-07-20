@@ -18,13 +18,16 @@ spec:
   targetNamespace: security
   # Block until the database Cluster reports Ready, so authentik (which depends on
   # this Kustomization) only starts once its DB — and the generated -app secret — exist.
+  timeout: 5m
   healthChecks:
     - apiVersion: postgresql.cnpg.io/v1
       kind: Cluster
       name: authentik-postgres
       namespace: security
   healthCheckExprs:
+    # CNPG sets a Ready=True condition once the primary is up. Only assert readiness —
+    # no 'failed' expr, otherwise the normal Ready=False bootstrap window is misread as a
+    # hard failure and Flux aborts the health check early instead of waiting it out.
     - apiVersion: postgresql.cnpg.io/v1
       kind: Cluster
-      failed: status.conditions.filter(e, e.type == 'Ready').all(e, e.status == 'False')
-      current: status.conditions.filter(e, e.type == 'Ready').all(e, e.status == 'True')
+      current: has(status.conditions) && status.conditions.exists(e, e.type == 'Ready' && e.status == 'True')
