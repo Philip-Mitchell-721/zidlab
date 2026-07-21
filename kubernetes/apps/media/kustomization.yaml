@@ -9,6 +9,7 @@ components:
 resources:
   - ./namespace.yaml
   - ./audiobookshelf/ks.yaml
+  - ./flaresolverr/ks.yaml
   - ./media-share/ks.yaml
   - ./prowlarr/ks.yaml
   - ./qbittorrent/ks.yaml

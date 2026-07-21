@@ -1,0 +1,57 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: flaresolverr
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: flaresolverr
+  interval: 1h
+  values:
+    controllers:
+      flaresolverr:
+        strategy: RollingUpdate
+        containers:
+          app:
+            image:
+              repository: ghcr.io/flaresolverr/flaresolverr
+              tag: v3.5.0
+            env:
+              LOG_LEVEL: info
+              TZ: America/New_York
+              PORT: &port 8191
+            probes:
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /
+                    port: *port
+                  initialDelaySeconds: 20
+                  periodSeconds: 30
+                  timeoutSeconds: 10
+                  failureThreshold: 4
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /
+                    port: *port
+                  initialDelaySeconds: 15
+                  periodSeconds: 15
+                  timeoutSeconds: 10
+                  failureThreshold: 4
+            resources:
+              requests:
+                cpu: 50m
+                memory: 256Mi
+              limits:
+                memory: 1Gi
+    service:
+      app:
+        ports:
+          http:
+            port: *port
