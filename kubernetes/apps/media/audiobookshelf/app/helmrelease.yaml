@@ -48,8 +48,15 @@ spec:
           - path: /metadata
       library:
         existingClaim: abs-library
+        # Match the paths the restored DB expects (the old instance used /audiobooks + /ebooks)
+        # by mounting each share subfolder at that exact path — so every item resolves with no
+        # re-scan/re-match and progress/covers stay intact.
         globalMounts:
-          - path: /library
+          - path: /audiobooks
+            subPath: Audio Books
+            readOnly: true
+          - path: /ebooks
+            subPath: EBooks
             readOnly: true
     route:
       app:
