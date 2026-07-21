@@ -1,0 +1,93 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: qbittorrent
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: qbittorrent
+  interval: 1h
+  values:
+    controllers:
+      qbittorrent:
+        strategy: Recreate
+        annotations:
+          reloader.stakater.com/auto: "true"
+        initContainers:
+          gluetun:
+            image:
+              repository: ghcr.io/qdm12/gluetun
+              tag: v3.41.1
+            restartPolicy: Always
+            env:
+              VPN_SERVICE_PROVIDER: surfshark
+              VPN_TYPE: wireguard
+              SERVER_COUNTRIES: Netherlands
+              FIREWALL_OUTBOUND_SUBNETS: "10.42.0.0/16,10.43.0.0/16,192.168.0.0/24"
+              FIREWALL_INPUT_PORTS: "8080"
+              TZ: America/New_York
+            envFrom:
+              - secretRef:
+                  name: qbittorrent-vpn
+            securityContext:
+              capabilities:
+                add: ["NET_ADMIN"]
+            resources:
+              requests:
+                cpu: 10m
+                memory: 64Mi
+              limits:
+                memory: 256Mi
+        containers:
+          app:
+            image:
+              repository: lscr.io/linuxserver/qbittorrent
+              tag: 5.2.3
+            env:
+              PUID: 1000
+              PGID: 1000
+              TZ: America/New_York
+              WEBUI_PORT: &webui 8080
+            probes:
+              liveness:
+                enabled: true
+              readiness:
+                enabled: true
+            resources:
+              requests:
+                cpu: 50m
+                memory: 256Mi
+              limits:
+                memory: 2Gi
+    service:
+      app:
+        ports:
+          http:
+            port: *webui
+    persistence:
+      config:
+        existingClaim: qbittorrent-config
+        globalMounts:
+          - path: /config
+      media:
+        existingClaim: media-data
+        globalMounts:
+          - path: /data
+      dev-tun:
+        type: hostPath
+        hostPath: /dev/net/tun
+        hostPathType: CharDevice
+        globalMounts:
+          - path: /dev/net/tun
+    route:
+      app:
+        hostnames: ["qbittorrent.${SECRET_DOMAIN}"]
+        parentRefs:
+          - name: envoy-internal
+            namespace: network
+            sectionName: https
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: *webui

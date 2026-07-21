@@ -9,3 +9,9 @@ components:
 resources:
   - ./namespace.yaml
   - ./audiobookshelf/ks.yaml
+  - ./media-share/ks.yaml
+  - ./prowlarr/ks.yaml
+  - ./qbittorrent/ks.yaml
+  - ./radarr/ks.yaml
+  - ./sonarr/ks.yaml
+  - ./sonarr-anime/ks.yaml
