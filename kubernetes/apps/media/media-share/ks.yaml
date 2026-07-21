@@ -1,0 +1,18 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: media-share
+spec:
+  interval: 1h
+  path: ./kubernetes/apps/media/media-share/app
+  dependsOn:
+    - name: csi-driver-smb
+      namespace: storage
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  targetNamespace: media
+  wait: true
