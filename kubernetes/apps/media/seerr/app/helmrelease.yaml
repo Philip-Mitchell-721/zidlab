@@ -1,0 +1,61 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: seerr
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: seerr
+  interval: 1h
+  values:
+    controllers:
+      seerr:
+        strategy: Recreate
+        containers:
+          app:
+            image:
+              repository: ghcr.io/seerr-team/seerr
+              tag: v3.3.0
+            env:
+              LOG_LEVEL: info
+              TZ: America/New_York
+              PORT: &port 5055
+            probes:
+              liveness:
+                enabled: true
+              readiness:
+                enabled: true
+            resources:
+              requests:
+                cpu: 25m
+                memory: 256Mi
+              limits:
+                memory: 1Gi
+    defaultPodOptions:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+    service:
+      app:
+        ports:
+          http:
+            port: *port
+    persistence:
+      config:
+        existingClaim: seerr-config
+        globalMounts:
+          - path: /app/config
+    route:
+      app:
+        hostnames: ["seerr.${SECRET_DOMAIN}"]
+        parentRefs:
+          - name: envoy-external
+            namespace: network
+            sectionName: https
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: *port
