@@ -36,6 +36,14 @@ spec:
                 memory: 128Mi
               limits:
                 memory: 512Mi
+    defaultPodOptions:
+      securityContext:
+        # recyclarr runs as UID 1000; fsGroup makes the Longhorn PVC writable
+        # so it can create /config/state (root-owned mounts otherwise deny it)
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
     persistence:
       # persistent working dir: recyclarr's TRaSH clone + its state/ dir, which
       # records the custom formats it manages. On emptyDir this was wiped every
