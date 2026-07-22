@@ -1,0 +1,52 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: recyclarr
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: recyclarr
+  interval: 1h
+  values:
+    controllers:
+      recyclarr:
+        type: cronjob
+        cronjob:
+          schedule: "0 4 * * *"           # daily 04:00, pick up TRaSH updates
+          timeZone: America/New_York
+          concurrencyPolicy: Forbid
+          successfulJobsHistory: 1
+          failedJobsHistory: 1
+        containers:
+          app:
+            image:
+              repository: ghcr.io/recyclarr/recyclarr
+              tag: 8.3.2
+            command: ["recyclarr", "sync"]
+            env:
+              TZ: America/New_York
+              RECYCLARR_CONFIG_DIR: /config
+            envFrom:
+              - secretRef:
+                  name: recyclarr-secret
+            resources:
+              requests:
+                cpu: 25m
+                memory: 128Mi
+              limits:
+                memory: 512Mi
+    persistence:
+      # writable working dir for recyclarr's template clone + cache
+      config:
+        type: emptyDir
+        globalMounts:
+          - path: /config
+      # the config file itself, injected read-only from the generated ConfigMap
+      config-file:
+        type: configMap
+        name: recyclarr-config
+        globalMounts:
+          - path: /config/recyclarr.yml
+            subPath: recyclarr.yml
+            readOnly: true

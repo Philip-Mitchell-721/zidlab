@@ -1,0 +1,49 @@
+# yaml-language-server: $schema=https://schemas.recyclarr.dev/v8/config-schema.json
+radarr:
+  radarr-main:
+    base_url: http://radarr.media.svc.cluster.local:7878
+    api_key: !env_var RADARR_API_KEY
+
+    quality_definition:
+      type: sqp-streaming
+
+    quality_profiles:
+      - trash_id: 90a3370d2d30cbaf08d9c23b856a12c8  # [SQP] SQP-1 WEB (1080p)
+        reset_unmatched_scores:
+          enabled: true
+        # Pure WEB-DL/WEBRip 1080p — drop the Bluray-1080p fallback the SQP
+        # template allows, so only WEB is ever grabbed (matches Sonarr).
+        upgrade:
+          allowed: true
+          until_quality: WEB 1080p
+          until_score: 10000
+        qualities:
+          - name: WEB 1080p
+            qualities:
+              - WEBDL-1080p
+              - WEBRip-1080p
+
+    custom_format_groups:
+      add:
+        - trash_id: 15b1cf0b6f1a1493856a4355907affee  # [Unwanted] Unwanted Formats SQP
+
+sonarr:
+  sonarr-main:
+    base_url: http://sonarr.media.svc.cluster.local:8989
+    api_key: !env_var SONARR_API_KEY
+
+    quality_definition:
+      type: series
+
+    quality_profiles:
+      - trash_id: 72dae194fc92bf828f32cde7744e51a1  # WEB-1080p
+        reset_unmatched_scores:
+          enabled: true
+
+    custom_format_groups:
+      add:
+        - trash_id: 158188097a58d7687dee647e04af0da3  # [Optional] Golden Rule HD (x265 HD -> reject)
+        - trash_id: 85fae4a2294965b75710ef2989c850eb  # [Streaming Services] HD/UHD boost
+        - trash_id: 59c3af66780d08332fdc64e68297098f  # [Unwanted] Unwanted Formats
+          select:
+            - 6f808933a71bd9666531610cb8c059cc  # BR-DISK (BTN) — non-default opt-in
