@@ -1,0 +1,13 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: recyclarr-config
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: longhorn
+  resources:
+    requests:
+      # holds recyclarr's cloned TRaSH repo + its state/ dir (which tracks
+      # the custom formats it manages — must survive between runs)
+      storage: 1Gi

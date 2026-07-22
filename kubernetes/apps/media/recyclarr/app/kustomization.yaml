@@ -4,6 +4,7 @@ kind: Kustomization
 resources:
   - ./ocirepository.yaml
   - ./helmrelease.yaml
+  - ./pvc.yaml
   - ./secret.sops.yaml
 configMapGenerator:
   - name: recyclarr-config

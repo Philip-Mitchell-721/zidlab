@@ -27,6 +27,16 @@ radarr:
       add:
         - trash_id: 15b1cf0b6f1a1493856a4355907affee  # [Unwanted] Unwanted Formats SQP
 
+    custom_formats:
+      # Allow x265 at 1080p: the SQP profile scores "x265 (HD)" at -10000, and
+      # with minScore=1000 that hard-rejects every x265 release. Neutralise it
+      # to 0 so x265 competes on equal footing with x264 (smaller files).
+      - trash_ids:
+          - dc98083864ea246d05a42df0d05f81cc  # x265 (HD)
+        assign_scores_to:
+          - name: "[SQP] SQP-1 WEB (1080p)"
+            score: 0
+
 sonarr:
   sonarr-main:
     base_url: http://sonarr.media.svc.cluster.local:8989
@@ -36,14 +46,32 @@ sonarr:
       type: series
 
     quality_profiles:
+      # --- general TV ---
       - trash_id: 72dae194fc92bf828f32cde7744e51a1  # WEB-1080p
+        reset_unmatched_scores:
+          enabled: true
+      # --- anime: Bluray Remux + WEB 1080p, scored with anime CFs ---
+      - trash_id: 20e0fc959f1f1704bed501f23bdae76f  # [Anime] Remux-1080p
         reset_unmatched_scores:
           enabled: true
 
     custom_format_groups:
       add:
-        - trash_id: 158188097a58d7687dee647e04af0da3  # [Optional] Golden Rule HD (x265 HD -> reject)
+        # --- general TV (scores into WEB-1080p) ---
         - trash_id: 85fae4a2294965b75710ef2989c850eb  # [Streaming Services] HD/UHD boost
         - trash_id: 59c3af66780d08332fdc64e68297098f  # [Unwanted] Unwanted Formats
           select:
             - 6f808933a71bd9666531610cb8c059cc  # BR-DISK (BTN) — non-default opt-in
+        # --- anime (scores into [Anime] Remux-1080p) ---
+        - trash_id: 4b196eed652c65ea98d615212040ebe2  # [Required] Anime Versions (prefer v2/v3)
+        - trash_id: f206572b1147d0221bb1c96765b349e8  # [Release Groups] Anime (tier fansub groups)
+        - trash_id: f54985e5e96747cef58731f1cf4c9181  # [Streaming Services] Anime
+
+    custom_formats:
+      # Allow x265 at 1080p on regular TV — same rationale as Radarr above.
+      # (The anime profile doesn't reject x265; anime is commonly x265.)
+      - trash_ids:
+          - 47435ece6b99a0b477caf360e79ba0bb  # x265 (HD)
+        assign_scores_to:
+          - name: WEB-1080p
+            score: 0

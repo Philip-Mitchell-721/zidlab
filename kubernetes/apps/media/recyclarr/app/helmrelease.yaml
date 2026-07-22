@@ -37,9 +37,12 @@ spec:
               limits:
                 memory: 512Mi
     persistence:
-      # writable working dir for recyclarr's template clone + cache
+      # persistent working dir: recyclarr's TRaSH clone + its state/ dir, which
+      # records the custom formats it manages. On emptyDir this was wiped every
+      # run, so recyclarr "forgot" its CFs and refused to sync ("CFs already
+      # exist"). A PVC keeps state across nightly runs.
       config:
-        type: emptyDir
+        existingClaim: recyclarr-config
         globalMounts:
           - path: /config
       # the config file itself, injected read-only from the generated ConfigMap
