@@ -1,0 +1,68 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: adguardhome-sync
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: adguard
+  interval: 1h
+  values:
+    controllers:
+      adguardhome-sync:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          app:
+            image:
+              repository: ghcr.io/bakito/adguardhome-sync
+              tag: v0.9.2
+            args: ["run"]
+            env:
+              TZ: America/New_York
+              # Replicate Plex (origin, source of truth) -> in-cluster (replica)
+              # every 5 minutes, and once immediately on start.
+              CRON: "*/5 * * * *"
+              RUN_ON_START: "true"
+              CONTINUE_ON_ERROR: "true"
+              API_PORT: "8080"
+              ORIGIN_URL: "http://192.168.0.27:3000"
+              # AUTO_SETUP lets sync run the install wizard on the fresh cluster
+              # instance itself (using the REPLICA1 creds in the secret), so no
+              # manual first-run setup is needed.
+              REPLICA1_URL: "http://adguard-web.network.svc.cluster.local:3000"
+              REPLICA1_AUTO_SETUP: "true"
+            # ORIGIN_USERNAME/PASSWORD + REPLICA1_USERNAME/PASSWORD
+            envFrom:
+              - secretRef:
+                  name: adguardhome-sync-secret
+            probes:
+              liveness:
+                enabled: true
+              readiness:
+                enabled: true
+            resources:
+              requests:
+                cpu: 10m
+                memory: 64Mi
+              limits:
+                memory: 128Mi
+    service:
+      app:
+        controller: adguardhome-sync
+        ports:
+          http:
+            port: 8080
+    route:
+      app:
+        # LAN-only sync status dashboard at adguard-sync.<domain>
+        hostnames: ["adguard-sync.${SECRET_DOMAIN}"]
+        parentRefs:
+          - name: envoy-internal
+            namespace: network
+            sectionName: https
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: 8080

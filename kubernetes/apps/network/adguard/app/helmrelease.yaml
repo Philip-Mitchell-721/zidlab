@@ -1,0 +1,97 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: adguard
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: adguard
+  interval: 1h
+  values:
+    controllers:
+      adguard:
+        # single writer to the RWO config volume — never run two pods at once
+        strategy: Recreate
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          app:
+            image:
+              repository: adguard/adguardhome
+              tag: v0.107.78
+            env:
+              TZ: America/New_York
+            # Probe the web/API port (3000), NOT DNS (53): on a brand-new
+            # instance AdGuard only serves the setup wizard on 3000 until
+            # adguardhome-sync auto-configures it. Gating readiness on 53 would
+            # deadlock (no ready endpoint -> sync can't reach it -> never set up).
+            probes:
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  tcpSocket:
+                    port: 3000
+                  initialDelaySeconds: 15
+                  periodSeconds: 30
+                  timeoutSeconds: 5
+                  failureThreshold: 5
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  tcpSocket:
+                    port: 3000
+                  initialDelaySeconds: 15
+                  periodSeconds: 20
+                  timeoutSeconds: 5
+                  failureThreshold: 5
+            resources:
+              requests:
+                cpu: 25m
+                memory: 128Mi
+              limits:
+                memory: 512Mi
+    service:
+      # DNS VIP on the LAN via Cilium LB-IPAM + L2. externalTrafficPolicy: Local
+      # preserves the real client source IP so AdGuard can do per-client stats/rules.
+      app:
+        type: LoadBalancer
+        annotations:
+          lbipam.cilium.io/ips: "192.168.0.6"
+        externalTrafficPolicy: Local
+        ports:
+          dns-tcp:
+            port: 53
+            protocol: TCP
+          dns-udp:
+            port: 53
+            protocol: UDP
+      # Admin UI on a plain ClusterIP — reached by the route below and by
+      # adguardhome-sync in-cluster; kept off the DNS VIP.
+      web:
+        controller: adguard
+        ports:
+          http:
+            port: 3000
+    persistence:
+      config:
+        existingClaim: adguard-config
+        globalMounts:
+          - path: /opt/adguardhome/conf
+            subPath: conf
+          - path: /opt/adguardhome/work
+            subPath: work
+    route:
+      app:
+        # LAN-only admin UI at adguard.<domain>
+        hostnames: ["adguard.${SECRET_DOMAIN}"]
+        parentRefs:
+          - name: envoy-internal
+            namespace: network
+            sectionName: https
+        rules:
+          - backendRefs:
+              - identifier: web
+                port: 3000
