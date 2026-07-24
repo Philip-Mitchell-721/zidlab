@@ -1,0 +1,13 @@
+---
+# Actual's /data dir: the SQLite budget files (server-files/ + user-files/).
+# Small and precious — replicated Longhorn block, single writer.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: actual-data
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 5Gi

@@ -1,0 +1,71 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: actual
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: actual
+  interval: 1h
+  values:
+    controllers:
+      actual:
+        # single writer to the RWO /data volume — never run two pods at once
+        strategy: Recreate
+        containers:
+          app:
+            image:
+              repository: ghcr.io/actualbudget/actual
+              tag: 26.7.0
+            env:
+              TZ: America/New_York
+              # Actual listens on 5006 by default; pinned here for clarity.
+              ACTUAL_PORT: &port 5006
+            # ── OIDC via Authentik (phase 2) ────────────────────────────────
+            # Uncomment once the Authentik provider exists and the actual-oidc
+            # SOPS secret is created. See docs/actual-budget-migration.md.
+            # The secret carries ACTUAL_OPENID_CLIENT_ID / _CLIENT_SECRET.
+            # envFrom:
+            #   - secretRef:
+            #       name: actual-oidc
+            # env: (add alongside the ones above)
+            #   ACTUAL_OPENID_DISCOVERY_URL: https://auth.${SECRET_DOMAIN}/application/o/actual/
+            #   ACTUAL_OPENID_SERVER_HOSTNAME: https://actual.${SECRET_DOMAIN}
+            #   ACTUAL_USER_CREATION_MODE: login
+            # ────────────────────────────────────────────────────────────────
+            probes:
+              liveness:
+                enabled: true
+              readiness:
+                enabled: true
+            resources:
+              requests:
+                cpu: 25m
+                memory: 128Mi
+              limits:
+                memory: 512Mi
+    service:
+      app:
+        ports:
+          http:
+            port: *port
+    persistence:
+      data:
+        existingClaim: actual-data
+        globalMounts:
+          - path: /data
+    route:
+      app:
+        # LAN-only for now (financial data): resolves to the internal gateway
+        # via k8s-gateway. Flip parentRef to envoy-external once OIDC is enforced
+        # if you want it reachable off-network. See the migration guide.
+        hostnames: ["actual.${SECRET_DOMAIN}"]
+        parentRefs:
+          - name: envoy-internal
+            namespace: network
+            sectionName: https
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: *port
