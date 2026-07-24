@@ -54,13 +54,19 @@ spec:
               limits:
                 memory: 512Mi
     service:
-      # DNS VIP on the LAN via Cilium LB-IPAM + L2. externalTrafficPolicy: Local
-      # preserves the real client source IP so AdGuard can do per-client stats/rules.
+      # DNS VIP on the LAN via Cilium LB-IPAM + L2 announcements.
+      # externalTrafficPolicy MUST be Cluster: with Local, only the ARP-announcing
+      # node forwards to node-local pods, so when the L2 leader isn't the node
+      # running AdGuard the traffic to .6 is silently dropped (VIP times out).
+      # Cluster forwards from any node (matches the working k8s-gateway on .3).
+      # Trade-off: client source IP may be masqueraded to a node IP, losing
+      # per-client AdGuard stats/rules — acceptable for a fallback resolver, and
+      # Cilium DSR mode may preserve it anyway (verify in the AdGuard query log).
       app:
         type: LoadBalancer
         annotations:
           lbipam.cilium.io/ips: "192.168.0.6"
-        externalTrafficPolicy: Local
+        externalTrafficPolicy: Cluster
         ports:
           dns-tcp:
             port: 53
