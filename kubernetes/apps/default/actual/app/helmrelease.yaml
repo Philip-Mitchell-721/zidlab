@@ -24,6 +24,9 @@ spec:
               ACTUAL_OPENID_DISCOVERY_URL: https://auth.${SECRET_DOMAIN}/application/o/actual/
               ACTUAL_OPENID_SERVER_HOSTNAME: https://actual.${SECRET_DOMAIN}
               ACTUAL_USER_CREATION_MODE: login
+              # Public-facing: OIDC is the ONLY login method — Actual's own
+              # password login is disabled so nothing but Authentik faces the net.
+              ACTUAL_OPENID_ENFORCE: "true"
             envFrom:
               - secretRef:
                   name: actual-oidc
@@ -50,12 +53,11 @@ spec:
           - path: /data
     route:
       app:
-        # LAN-only for now (financial data): resolves to the internal gateway
-        # via k8s-gateway. Flip parentRef to envoy-external once OIDC is enforced
-        # if you want it reachable off-network. See the migration guide.
+        # Public via the Cloudflare tunnel; external-dns publishes actual.<domain>.
+        # Safe to expose because OIDC is enforced above (Authentik is the only door).
         hostnames: ["actual.${SECRET_DOMAIN}"]
         parentRefs:
-          - name: envoy-internal
+          - name: envoy-external
             namespace: network
             sectionName: https
         rules:
