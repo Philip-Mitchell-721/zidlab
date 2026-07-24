@@ -20,20 +20,13 @@ spec:
               tag: 26.7.0
             env:
               TZ: America/New_York
-              # Actual listens on 5006 by default; pinned here for clarity.
               ACTUAL_PORT: &port 5006
-            # ── OIDC via Authentik (phase 2) ────────────────────────────────
-            # Uncomment once the Authentik provider exists and the actual-oidc
-            # SOPS secret is created. See docs/actual-budget-migration.md.
-            # The secret carries ACTUAL_OPENID_CLIENT_ID / _CLIENT_SECRET.
-            # envFrom:
-            #   - secretRef:
-            #       name: actual-oidc
-            # env: (add alongside the ones above)
-            #   ACTUAL_OPENID_DISCOVERY_URL: https://auth.${SECRET_DOMAIN}/application/o/actual/
-            #   ACTUAL_OPENID_SERVER_HOSTNAME: https://actual.${SECRET_DOMAIN}
-            #   ACTUAL_USER_CREATION_MODE: login
-            # ────────────────────────────────────────────────────────────────
+              ACTUAL_OPENID_DISCOVERY_URL: https://auth.${SECRET_DOMAIN}/application/o/actual/
+              ACTUAL_OPENID_SERVER_HOSTNAME: https://actual.${SECRET_DOMAIN}
+              ACTUAL_USER_CREATION_MODE: login
+            envFrom:
+              - secretRef:
+                  name: actual-oidc
             probes:
               liveness:
                 enabled: true
