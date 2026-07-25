@@ -72,6 +72,10 @@ spec:
         server:
           # Grafana builds the OAuth redirect_uri from this — must match the Authentik provider.
           root_url: "https://grafana.${SECRET_DOMAIN}"
+        auth:
+          # OIDC-only: hide the username/password form. The admin user from the
+          # grafana-admin secret still works over API basic auth for recovery.
+          disable_login_form: true
         auth.generic_oauth:
           enabled: true
           name: Authentik
@@ -83,8 +87,8 @@ spec:
           role_attribute_path: "contains(groups, 'authentik Admins') && 'Admin' || 'Viewer'"
           allow_assign_grafana_admin: true
           allow_sign_up: true
-          # keep the native admin/password login form as a fallback; no auto-redirect yet
-          auto_login: false
+          # redirect straight to Authentik instead of showing a login button
+          auto_login: true
 
     # Cilium provides kube-proxy replacement — there is no kube-proxy to scrape.
     kubeProxy:
