@@ -1,0 +1,16 @@
+---
+# Mealie's file data (DATA_DIR=/app/data): recipe images, user assets, and the
+# backup .zips. The recipes/users themselves live in Postgres (CNPG), NOT here.
+# Small + precious -> replicated Longhorn block, single writer (strategy: Recreate).
+# NOTE: this is Longhorn, NOT NFS. The old docs/nfs-and-mealie-migration.md plan is
+# superseded — Mealie never needed a network share.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mealie-data
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 10Gi

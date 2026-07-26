@@ -11,4 +11,5 @@ resources:
   - ./actual/ks.yaml
   - ./echo/ks.yaml
   - ./apprise/ks.yaml
+  - ./mealie/ks.yaml
   - ./ntfy/ks.yaml

@@ -1,0 +1,20 @@
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: mealie-postgres
+spec:
+  # Single primary for now. Longhorn already replicates the data volume 3x, so a lost
+  # node is recovered by re-attaching the volume + rescheduling the primary.
+  # HA upgrade path: bump to 2-3 instances AND put these volumes on a reduced-replica
+  # Longhorn StorageClass, otherwise you double-replicate (CNPG replicas x Longhorn).
+  instances: 1
+  storage:
+    size: 8Gi
+    storageClass: longhorn
+  bootstrap:
+    initdb:
+      # CNPG generates the `mealie-postgres-app` Secret (keys: username, password,
+      # dbname, host, port, uri) — mealie's HelmRelease reads `password` from it.
+      database: mealie
+      owner: mealie
