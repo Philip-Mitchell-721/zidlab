@@ -18,3 +18,12 @@ spec:
       # dbname, host, port, uri) — mealie's HelmRelease reads `password` from it.
       database: mealie
       owner: mealie
+      # Mealie's backup RESTORE runs `SET session_replication_role='replica'` (to
+      # disable FK/trigger checks during bulk import) — a superuser-gated parameter.
+      # Grant just that one parameter to the app role (PG15+) so restores work
+      # without making mealie a full superuser. postInitApplicationSQL runs as the
+      # superuser, after the mealie role exists. NOTE: postInit only runs at INITIAL
+      # bootstrap, so this was also applied live on 2026-07-26 for the current cluster;
+      # this line is for reproducibility on a rebuild.
+      postInitApplicationSQL:
+        - GRANT SET ON PARAMETER session_replication_role TO mealie;
