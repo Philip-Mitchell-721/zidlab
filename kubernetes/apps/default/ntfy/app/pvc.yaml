@@ -1,0 +1,14 @@
+---
+# ntfy's on-disk state: the message cache (cache.db), the user/ACL database
+# (user.db), and attachment cache. All small — replicated Longhorn block, single
+# writer (strategy: Recreate). No bulk data here, so no network share needed.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ntfy-data
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 2Gi

@@ -1,0 +1,87 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: ntfy
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: ntfy
+  interval: 1h
+  values:
+    controllers:
+      ntfy:
+        # Single writer to the RWO data volume (SQLite cache + user db).
+        strategy: Recreate
+        containers:
+          app:
+            image:
+              repository: docker.io/binwiederhier/ntfy
+              tag: v2.26.3
+            # The image entrypoint is `ntfy`; it needs the `serve` subcommand.
+            args: ["serve"]
+            env:
+              TZ: America/New_York
+              # Public identity of the server (used in the UI + notification links).
+              # Set now even though we start LAN-only — the hostname is the same after
+              # the public flip, so this doesn't change.
+              NTFY_BASE_URL: https://ntfy.${SECRET_DOMAIN}
+              # Non-privileged port so the container needn't run as root to bind.
+              NTFY_LISTEN_HTTP: ":8080"
+              # Envoy terminates TLS and forwards X-Forwarded-* — let ntfy trust it
+              # (needed for correct rate-limiting + https link generation).
+              NTFY_BEHIND_PROXY: "true"
+              # Persist the message cache + auth db on the Longhorn volume.
+              NTFY_CACHE_FILE: /var/lib/ntfy/cache.db
+              NTFY_CACHE_DURATION: "12h"
+              NTFY_ATTACHMENT_CACHE_DIR: /var/lib/ntfy/attachments
+              # --- Auth ---
+              # ntfy uses its OWN token/user auth (NOT Authentik forward-auth) so that
+              # programmatic publishers — Alertmanager, the Immich CronJob — can send a
+              # Bearer token. Lock it down: nothing is readable/writable without an
+              # explicit grant. Create an admin user + per-app tokens post-deploy
+              # (see docs/ntfy-setup.md), then flip the route to public.
+              NTFY_AUTH_FILE: /var/lib/ntfy/user.db
+              NTFY_AUTH_DEFAULT_ACCESS: deny-all
+              NTFY_ENABLE_SIGNUP: "false"
+              NTFY_ENABLE_LOGIN: "true"
+              # iOS ONLY: the ntfy iOS app needs instant delivery routed via ntfy.sh
+              # (a hashed wake-up ping — the message CONTENT is still fetched from our
+              # server, never sent to ntfy.sh). Remove this line if you're Android-only.
+              NTFY_UPSTREAM_BASE_URL: https://ntfy.sh
+            probes:
+              liveness:
+                enabled: true
+              readiness:
+                enabled: true
+            resources:
+              requests:
+                cpu: 10m
+                memory: 32Mi
+              limits:
+                memory: 128Mi
+    service:
+      app:
+        ports:
+          http:
+            port: 8080
+    persistence:
+      data:
+        existingClaim: ntfy-data
+        globalMounts:
+          - path: /var/lib/ntfy
+    route:
+      app:
+        # LAN-only via envoy-internal to start. ntfy is most useful PUBLIC (phone
+        # notifications off-network + the Immich/Alertmanager publishers), so the end
+        # state is envoy-external — flip parentRefs after an admin user + tokens exist
+        # (auth is deny-all, so exposing it is safe once tokens gate publishing).
+        hostnames: ["ntfy.${SECRET_DOMAIN}"]
+        parentRefs:
+          - name: envoy-internal
+            namespace: network
+            sectionName: https
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: 8080
