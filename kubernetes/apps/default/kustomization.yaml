@@ -10,4 +10,5 @@ resources:
   - ./namespace.yaml
   - ./actual/ks.yaml
   - ./echo/ks.yaml
+  - ./apprise/ks.yaml
   - ./ntfy/ks.yaml

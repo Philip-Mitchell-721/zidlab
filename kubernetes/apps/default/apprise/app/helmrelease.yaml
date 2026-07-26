@@ -1,0 +1,62 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: apprise
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: apprise
+  interval: 1h
+  values:
+    controllers:
+      apprise:
+        # Single writer to the RWO /config volume.
+        strategy: Recreate
+        containers:
+          app:
+            image:
+              repository: docker.io/caronc/apprise
+              tag: v1.5.1
+            env:
+              TZ: America/New_York
+              # Persist named configs by key under /config/store.
+              APPRISE_STATEFUL_MODE: hash
+            probes:
+              liveness:
+                enabled: true
+              readiness:
+                enabled: true
+            resources:
+              requests:
+                cpu: 10m
+                memory: 64Mi
+              limits:
+                memory: 256Mi
+    service:
+      app:
+        ports:
+          http:
+            # apprise-api listens on 8000.
+            port: 8000
+    persistence:
+      config:
+        existingClaim: apprise-config
+        globalMounts:
+          - path: /config
+    route:
+      app:
+        # LAN-ONLY, permanently (envoy-internal). Apprise is an internal fan-out API
+        # with NO native auth, and it holds destination secrets — it must never be
+        # public. In-cluster producers (the Immich CronJob, Alertmanager) reach it at
+        # apprise.default.svc.cluster.local:8000; this route is just for the config UI
+        # on the LAN. Do NOT flip this to envoy-external.
+        hostnames: ["apprise.${SECRET_DOMAIN}"]
+        parentRefs:
+          - name: envoy-internal
+            namespace: network
+            sectionName: https
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: 8000

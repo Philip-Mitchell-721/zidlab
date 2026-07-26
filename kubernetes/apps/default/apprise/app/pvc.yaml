@@ -1,0 +1,15 @@
+---
+# Apprise's persistent config store (/config/store): the named notification configs
+# (each a set of destination URLs — ntfy token, SMTP creds, Discord webhook, …).
+# These hold secrets but are entered post-deploy via the web UI/API, so they live
+# ONLY on this Longhorn volume, never in git. Tiny; single writer (Recreate).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: apprise-config
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 1Gi
