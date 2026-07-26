@@ -1,0 +1,37 @@
+---
+# MySQL datadir. Small and precious — replicated Longhorn block, single writer.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kimai-mysql-data
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 5Gi
+---
+# Kimai's on-disk state (the real data lives in MySQL). var/data holds uploads
+# (avatars, invoice templates/documents); var/plugins holds installed bundles.
+# Both come over from your desktop's Docker volumes during migration.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kimai-data
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kimai-plugins
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 1Gi

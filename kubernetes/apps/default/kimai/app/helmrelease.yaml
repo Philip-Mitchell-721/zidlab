@@ -1,0 +1,96 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: kimai
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: kimai
+  interval: 1h
+  # Install the MySQL HelmRelease (same folder) before this one.
+  dependsOn:
+    - name: kimai-mysql
+  values:
+    controllers:
+      kimai:
+        # One pod at a time — it owns the RWO data/plugins volumes and runs DB
+        # migrations on boot. Reloader restarts it when its secret changes.
+        strategy: Recreate
+        annotations:
+          reloader.stakater.com/auto: "true"
+        initContainers:
+          # Block startup until MySQL actually accepts TCP — stronger than a
+          # Kustomization-level wait, and avoids a boot-time migration crash loop.
+          wait-for-db:
+            image:
+              repository: busybox
+              tag: "1.37"
+            command:
+              - sh
+              - -c
+              - until nc -z kimai-mysql 3306; do echo "waiting for kimai-mysql:3306"; sleep 2; done
+        containers:
+          app:
+            image:
+              repository: kimai/kimai2
+              # PIN this to the version you run on your desktop so the first restore
+              # applies ZERO migrations (proves the data came over clean). Bump to a
+              # newer tag as a separate step afterwards; the entrypoint runs
+              # doctrine migrations automatically on the next boot. 2.62.0 = latest.
+              tag: 2.62.0
+            env:
+              TZ: America/New_York
+              APP_ENV: prod
+              # Symfony trusted_hosts guard. Must include the public hostname or
+              # Kimai 400s. Comma-separated hostnames become a regex.
+              TRUSTED_HOSTS: "kimai.${SECRET_DOMAIN},localhost,127.0.0.1"
+              # Envoy terminates TLS and forwards X-Forwarded-*. Kimai must trust the
+              # gateway's source IP (cluster pod/service CIDRs) to detect HTTPS —
+              # this is what makes it generate correct https:// SAML ACS URLs later.
+              TRUSTED_PROXIES: "10.42.0.0/16,10.43.0.0/16"
+              MAILER_FROM: "kimai@${SECRET_DOMAIN}"
+              MAILER_URL: "null://null"
+            envFrom:
+              - secretRef:
+                  name: kimai-secret   # DATABASE_URL + APP_SECRET
+            probes:
+              liveness:
+                enabled: true
+              readiness:
+                enabled: true
+            resources:
+              requests:
+                cpu: 50m
+                memory: 256Mi
+              limits:
+                memory: 1Gi
+    service:
+      app:
+        ports:
+          http:
+            # kimai/kimai2:apache serves on 8001 (your compose maps 8050:8001).
+            port: 8001
+    persistence:
+      data:
+        existingClaim: kimai-data
+        globalMounts:
+          - path: /opt/kimai/var/data
+      plugins:
+        existingClaim: kimai-plugins
+        globalMounts:
+          - path: /opt/kimai/var/plugins
+    route:
+      app:
+        # LAN-only via envoy-internal (like your *arr apps). Flip parentRefs to
+        # envoy-external + add the Cloudflare tunnel later if you want it public —
+        # do that only after SAML is enforced and the local login form is disabled.
+        hostnames: ["kimai.${SECRET_DOMAIN}"]
+        parentRefs:
+          - name: envoy-internal
+            namespace: network
+            sectionName: https
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: 8001
