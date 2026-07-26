@@ -42,9 +42,10 @@ spec:
             env:
               TZ: America/New_York
               APP_ENV: prod
-              # Symfony trusted_hosts guard. Must include the public hostname or
-              # Kimai 400s. Comma-separated hostnames become a regex.
-              TRUSTED_HOSTS: "kimai.${SECRET_DOMAIN},localhost,127.0.0.1"
+              # Symfony trusted_hosts guard. Must include the serving hostname or
+              # Kimai 400s ("Untrusted Host"). This is a REGEX ALTERNATION — hosts are
+              # PIPE-separated, not comma (commas make one regex that matches nothing).
+              TRUSTED_HOSTS: "kimai.${SECRET_DOMAIN}|localhost|127.0.0.1"
               # Envoy terminates TLS and forwards X-Forwarded-*. Kimai must trust the
               # gateway's source IP (cluster pod/service CIDRs) to detect HTTPS —
               # this is what makes it generate correct https:// SAML ACS URLs later.
