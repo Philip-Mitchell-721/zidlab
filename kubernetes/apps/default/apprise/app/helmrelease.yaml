@@ -22,6 +22,10 @@ spec:
               TZ: America/New_York
               # Persist named configs by key under /config/store.
               APPRISE_STATEFUL_MODE: hash
+              # CRITICAL: apprise-api's gunicorn auto-scales workers from the CPU count
+              # it sees (no CPU limit -> the node's 16 threads -> ~33 workers -> OOM).
+              # This is a low-traffic internal fan-out API; 2 workers is plenty.
+              APPRISE_WORKER_COUNT: "2"
             probes:
               liveness:
                 enabled: true
@@ -30,9 +34,9 @@ spec:
             resources:
               requests:
                 cpu: 10m
-                memory: 64Mi
+                memory: 96Mi
               limits:
-                memory: 256Mi
+                memory: 384Mi
     service:
       app:
         ports:
