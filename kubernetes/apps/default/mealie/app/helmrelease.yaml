@@ -67,10 +67,17 @@ spec:
               # Access control lives in AUTHENTIK: the "village" group is bound to the
               # Mealie application, so anyone in village/house/me can log in and nobody
               # else reaches it — no in-app group gating needed here.
-              # We use Authentik's default `email` scope (no email_verified flag), so
-              # don't require verification. Safe: single trusted IdP, closed
-              # registration, and every account's email is set by the admin.
+              # Not requiring email verification keeps this robust regardless of which
+              # email scope mapping is attached. (The provider also carries Authentik's
+              # "OpenID email (verified)" mapping, so the flag comes through true anyway
+              # — belt & braces.) Safe: single trusted IdP, closed registration,
+              # admin-set emails.
               OIDC_REQUIRES_EMAIL_VERIFICATION: "false"
+              # OIDC-only: disable the username/password form entirely — Authentik is
+              # the sole login. NOTE: any local-only account (e.g. Meghan) can't log in
+              # until it has an Authentik identity in the `village` group. Flip back to
+              # "true" if you need password login as a temporary fallback.
+              ALLOW_PASSWORD_LOGIN: "false"
             envFrom:
               - secretRef:
                   name: mealie-oidc   # OIDC_CLIENT_ID + OIDC_CLIENT_SECRET
@@ -98,12 +105,13 @@ spec:
           - path: /app/data
     route:
       app:
-        # LAN-only via envoy-internal for phase 1 (migrate + verify). Flip parentRefs
-        # to envoy-external in phase 2 once OIDC is wired — external-dns then publishes
-        # mealie.<domain> through the Cloudflare tunnel. Signup stays closed either way.
+        # PUBLIC via envoy-external + Cloudflare tunnel (external-dns publishes
+        # mealie.<domain>). Safe to expose: OIDC is the only login (password login
+        # disabled above), so Authentik is the sole door. Old desktop Cloudflare
+        # record was removed first so the cluster owns the hostname.
         hostnames: ["mealie.${SECRET_DOMAIN}"]
         parentRefs:
-          - name: envoy-internal
+          - name: envoy-external
             namespace: network
             sectionName: https
         rules:
