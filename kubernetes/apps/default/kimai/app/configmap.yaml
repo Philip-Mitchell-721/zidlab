@@ -40,12 +40,12 @@ data:
                     singleLogoutService:
                         url: 'https://kimai.zidlab.com/auth/saml/logout'
                         binding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'
-                strict: false
-                debug: true
+                strict: true
+                debug: false
                 security:
                     nameIdEncrypted: false
                     authnRequestsSigned: false
-                    wantAssertionsSigned: false
+                    wantAssertionsSigned: true
                     wantNameId: false
                     requestedAuthnContext: false
                     signatureAlgorithm: 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256'
