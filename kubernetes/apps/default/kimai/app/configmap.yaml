@@ -40,12 +40,18 @@ data:
                     singleLogoutService:
                         url: 'https://kimai.zidlab.com/auth/saml/logout'
                         binding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'
-                strict: true
+                # Reverted from strict+signed-assertions: Authentik signs the SAML
+                # *response* (validated below via the idp x509cert), but not the
+                # *assertion* separately, so wantAssertionsSigned/strict rejected it
+                # ("An authentication exception occurred"). Response-signature
+                # validation still applies. To re-harden later: enable "Sign
+                # assertions" on the Authentik provider, THEN set these back to true.
+                strict: false
                 debug: false
                 security:
                     nameIdEncrypted: false
                     authnRequestsSigned: false
-                    wantAssertionsSigned: true
+                    wantAssertionsSigned: false
                     wantNameId: false
                     requestedAuthnContext: false
                     signatureAlgorithm: 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256'
