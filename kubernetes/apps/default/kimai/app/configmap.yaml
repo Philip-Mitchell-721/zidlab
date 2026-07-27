@@ -1,0 +1,52 @@
+---
+# Kimai SAML config mounted at /opt/kimai/config/packages/local.yaml.
+# IdP values pulled from Authentik's SAML metadata for the "kimai" provider.
+# Non-secret (IdP cert is public; SP does not sign requests yet) -> ConfigMap.
+# debug:true + strict:false while we verify the attribute names Authentik sends;
+# tighten (strict:true, wantAssertionsSigned:true) once login works.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kimai-saml
+data:
+  local.yaml: |
+    kimai:
+        saml:
+            activate: true
+            title: 'Login with Authentik'
+            mapping:
+                - { saml: '$http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress', kimai: email }
+                - { saml: '$http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name', kimai: alias }
+            roles:
+                resetOnLogin: false
+                attribute: 'http://schemas.xmlsoap.org/claims/Group'
+                mapping:
+                    - { saml: Admin, kimai: ROLE_SUPER_ADMIN }
+            connection:
+                idp:
+                    entityId: 'https://auth.zidlab.com/application/saml/kimai/metadata/'
+                    singleSignOnService:
+                        url: 'https://auth.zidlab.com/application/saml/kimai/'
+                        binding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'
+                    singleLogoutService:
+                        url: 'https://auth.zidlab.com/application/saml/kimai/'
+                        binding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'
+                    x509cert: 'MIIFUjCCAzqgAwIBAgIQNDAtscPAR8aCC86Bw28HcDANBgkqhkiG9w0BAQsFADAdMRswGQYDVQQDDBJhdXRoZW50aWsgMjAyNi41LjUwHhcNMjYwNzE5MTEzNDA2WhcNMjcwNzIwMTEzNDA2WjBWMSowKAYDVQQDDCFhdXRoZW50aWsgU2VsZi1zaWduZWQgQ2VydGlmaWNhdGUxEjAQBgNVBAoMCWF1dGhlbnRpazEUMBIGA1UECwwLU2VsZi1zaWduZWQwggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQCdgYiUvShNzgNlAnD08KXfiFTazwSdHd8cXNyolcUw9N5UqquwKG10YO10hgAz+F4bVf2DB19t1oEakJBG6oVBk4SPeBmNgZixBAp8Asgoaj4HBTeB+vquFXkm6Ip9q6EWzcaoM3S+H4QgGAoO2cCbnAk891bnPjIJHYkKn6wSvTtazfnONNkJ8l0MPOECzNTzgr32rz581679SyF5rGC3SBQxXRlhwCdUF5Z6P2ifI8oBMth2Q1g/S92uo7sa1XwACyL5P8bl+6c9ir91ldFAbh7HtycR6flCW1xVJH6vJuSJ0qUaYQexHNvUsD3nkiqft3fVpliXI9sPVvaTYMDL+rQcXEWyMQtGgOcA4iT/TgWDc+Dm/Yk5BUaqd1FdokGlQdwLTIoHkn8OVfshup6DswYIeRZQLBxs5Z1qjn8/6nIkgZz16QvY1igBGSW75tjunGHlPFhp0zryV5upYQ4Z8X5qEEAPTI0jJ5i3HCZ/Av6cEoNQrzbuc7n5rXNOqrO04gSKTEBWM4N2jwwk6Vl5yfRxWI4u2kJoouE5AnHD+DlXWY5s6IsHpn9xf1eSa2d/L25J326+Pl9X98flMkOBTOrJ2kMsUtWg/vYCqkXae03FzPadfz7jMH9O29Mv8ICABXHnbxncCw5VZnbIe5G3Obyl6MiiB8etz3kxf5bLGwIDAQABo1UwUzBRBgNVHREBAf8ERzBFgkNsQTFXRWszMGlabGs1UkpRV0xlaTFwSXlwVEhuazdKOGdiTW81SmowLnNlbGYtc2lnbmVkLmdvYXV0aGVudGlrLmlvMA0GCSqGSIb3DQEBCwUAA4ICAQAVtITVj3/+LFu8RDbtBw0jQqglUa+MQKFHMLJkvifNBq7q8hNv7g0UouOur5m2/ejqvM7s84HKdKLv7Ry3IPvrQCDG8R7uumjCipndgXGmqcMmU7Kv4n7G51vhZ1mlmzi6cr20hQGJccTfAuULyxoKGldSOQ6+UoB0AZQqx+ICJZ1qz+0i0QsgL2uN17oIz5auqUHP5Oq5hpJ18hgSLhmath/32wdRsK7+nujjznC1LYQFNgfB1wDgO0msddGntcs2rsMxtPAZzKYANZyWnBVgrM8OZKvUyGsvStrQVJN/fzSY9QJznVG8LRAGpj4ws9gbjAVul2SJv15mMXuRTrfrsYctLbCDgclEGoMScD1OCqkcKlJXewUutKGc7JajHcelemZ+n+x54UOdquBAnRPUG7F4poJ0VO34W5Tg1ng+oPiE3Y2r/zYyHHVocDo7opCXlJJMXyXrGAH+4oLdC0UfFeGTXn/uJYDk1fn6qYEggTESWqEqb5uJ8ph9d2oFFoeoYGUEpqeZpn49AMapSdVqlYuWSrRBNbHXKfCyWuz/oBiNNGIzYT3f1gaePq9gmsdgc30rbOPSAFxA0smRMx6k7maGFTBrBtW9TzEE3tKQlFPbhHc58OPmrX2A6kp9rqo5Igf4N/tL7eN8Shd60E2p6P2F+3ihFMyHi//6+jET4Q=='
+                sp:
+                    entityId: 'https://kimai.zidlab.com/auth/saml/metadata'
+                    assertionConsumerService:
+                        url: 'https://kimai.zidlab.com/auth/saml/acs'
+                        binding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST'
+                    singleLogoutService:
+                        url: 'https://kimai.zidlab.com/auth/saml/logout'
+                        binding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'
+                strict: false
+                debug: true
+                security:
+                    nameIdEncrypted: false
+                    authnRequestsSigned: false
+                    wantAssertionsSigned: false
+                    wantNameId: false
+                    requestedAuthnContext: false
+                    signatureAlgorithm: 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256'
+                    digestAlgorithm: 'http://www.w3.org/2001/04/xmlenc#sha256'

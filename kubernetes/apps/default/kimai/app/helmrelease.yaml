@@ -81,6 +81,15 @@ spec:
         existingClaim: kimai-plugins
         globalMounts:
           - path: /opt/kimai/var/plugins
+      # SAML config override — single-file subPath mount so sibling config/packages
+      # files are untouched. reloader restarts kimai when the ConfigMap changes.
+      saml-config:
+        type: configMap
+        name: kimai-saml
+        globalMounts:
+          - path: /opt/kimai/config/packages/local.yaml
+            subPath: local.yaml
+            readOnly: true
     route:
       app:
         # LAN-only via envoy-internal (like your *arr apps). Flip parentRefs to

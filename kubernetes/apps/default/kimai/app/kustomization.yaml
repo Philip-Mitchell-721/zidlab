@@ -6,5 +6,6 @@ resources:
   - ./mysql.yaml
   - ./helmrelease.yaml
   - ./pvc.yaml
+  - ./configmap.yaml
   - ./mysql-secret.sops.yaml
   - ./secret.sops.yaml
