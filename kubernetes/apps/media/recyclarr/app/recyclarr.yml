@@ -50,10 +50,33 @@ sonarr:
       - trash_id: 72dae194fc92bf828f32cde7744e51a1  # WEB-1080p
         reset_unmatched_scores:
           enabled: true
-      # --- anime: Bluray Remux + WEB 1080p, scored with anime CFs ---
-      - trash_id: 20e0fc959f1f1704bed501f23bdae76f  # [Anime] Remux-1080p
+      # --- anime: WEB-1080p + Bluray-1080p ENCODES, NO Remux (keep files small) ---
+      # Old anime (e.g. FMA, 2009) predates streaming — it has *zero* WEB-1080p
+      # releases, so the small-but-good option is a Bluray-1080p x264/x265 encode
+      # (~1.5-3GB/ep), not WEB. We allow WEB-1080p *and* Bluray-1080p, but exclude
+      # Bluray-1080p Remux (~7GB/ep, ~486GB/series). Reuses the anime trash_id so
+      # the anime CF scoring (fansub group tiers, streaming services) still applies.
+      - trash_id: 20e0fc959f1f1704bed501f23bdae76f  # anime template → anime CF scoring
+        name: "[Anime] 1080p"
         reset_unmatched_scores:
           enabled: true
+        upgrade:
+          allowed: true
+          until_quality: Bluray-1080p   # cutoff = best allowed (encode, never Remux)
+          until_score: 10000
+        qualities:
+          - name: Bluray-1080p          # x264/x265 encodes (~1.5-3GB) — NOT Remux
+          - name: WEB 1080p
+            qualities:
+              - WEBDL-1080p
+              - WEBRip-1080p
+              - HDTV-1080p
+          - name: Bluray-720p
+          - name: WEB 720p
+            qualities:
+              - WEBDL-720p
+              - WEBRip-720p
+              - HDTV-720p
 
     custom_format_groups:
       add:
@@ -62,7 +85,7 @@ sonarr:
         - trash_id: 59c3af66780d08332fdc64e68297098f  # [Unwanted] Unwanted Formats
           select:
             - 6f808933a71bd9666531610cb8c059cc  # BR-DISK (BTN) — non-default opt-in
-        # --- anime (scores into [Anime] Remux-1080p) ---
+        # --- anime (scores into [Anime] 1080p) ---
         - trash_id: 4b196eed652c65ea98d615212040ebe2  # [Required] Anime Versions (prefer v2/v3)
         - trash_id: f206572b1147d0221bb1c96765b349e8  # [Release Groups] Anime (tier fansub groups)
         - trash_id: f54985e5e96747cef58731f1cf4c9181  # [Streaming Services] Anime
