@@ -60,23 +60,25 @@ sonarr:
         name: "[Anime] 1080p"
         reset_unmatched_scores:
           enabled: true
+        # Old-anime encodes are usually from groups TRaSH doesn't tier (score 0).
+        # The anime default min of 100 rejects *every* one of them, leaving only
+        # junk (e.g. a 17GB 720p batch from a recognised web-tier group won the
+        # first grab). Drop the gate to 0: the negative CFs (Anime Raws / LQ /
+        # Dubs-only / VOSTFR = -10000) still reject bad releases, while neutral
+        # 1080p encodes grab and win on quality weight.
+        min_format_score: 0
         upgrade:
           allowed: true
           until_quality: Bluray-1080p   # cutoff = best allowed (encode, never Remux)
           until_score: 10000
+        # 1080p only — no 720p, so a mislabelled multi-GB 720p batch can never win.
         qualities:
-          - name: Bluray-1080p          # x264/x265 encodes (~1.5-3GB) — NOT Remux
+          - name: Bluray-1080p          # x264/x265 encodes (~1.5-3.5GB) — NOT Remux
           - name: WEB 1080p
             qualities:
               - WEBDL-1080p
               - WEBRip-1080p
               - HDTV-1080p
-          - name: Bluray-720p
-          - name: WEB 720p
-            qualities:
-              - WEBDL-720p
-              - WEBRip-720p
-              - HDTV-720p
 
     custom_format_groups:
       add:
@@ -97,4 +99,12 @@ sonarr:
           - 47435ece6b99a0b477caf360e79ba0bb  # x265 (HD)
         assign_scores_to:
           - name: WEB-1080p
+            score: 0
+      # Dub-watcher: TRaSH scores "Dubs Only" at -10000, which rejects English-
+      # dub-only releases — exactly what we want to keep. Neutralise it to 0 so
+      # dubbed releases grab. (VOSTFR stays at -10000: that's French subs.)
+      - trash_ids:
+          - 9c14d194486c4014d422adc64092d794  # Dubs Only
+        assign_scores_to:
+          - name: "[Anime] 1080p"
             score: 0
