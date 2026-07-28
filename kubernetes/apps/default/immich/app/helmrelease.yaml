@@ -155,13 +155,13 @@ spec:
               - path: /cache
     route:
       app:
-        # LAN-only first (envoy-internal). After Authentik OIDC is wired + verified in the
-        # Immich UI, flip to envoy-external to go public (family share links). external-dns
-        # publishes immich.<domain>. Unlike Mealie we keep the app publicly reachable (no
-        # forward-auth) so grandparents' tokenised share links work.
+        # PUBLIC via envoy-external + Cloudflare tunnel (external-dns publishes
+        # immich.<domain>). Flipped from envoy-internal on 2026-07-28 once the core deploy
+        # + phone/bulk import verified. App stays publicly reachable with NO forward-auth
+        # so grandparents' tokenised share links work; login = Immich's own + Authentik OIDC.
         hostnames: ["immich.${SECRET_DOMAIN}"]
         parentRefs:
-          - name: envoy-internal
+          - name: envoy-external
             namespace: network
             sectionName: https
         rules:
