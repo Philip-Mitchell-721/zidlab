@@ -1,0 +1,44 @@
+---
+# Immich's photo library on the interim desktop SMB share, read-WRITE. Same
+# //192.168.0.25/Videos share the arr stack uses (mediauser already has Change access);
+# Immich lives in the /Videos/Immich subfolder (mounted via subPath in the HelmRelease).
+# Mount options mirror the arr stack's RW mount (media/media-share/app/pv.yaml).
+# When the NAS arrives: repoint `source` (or copy the folder over) — cluster config is
+# unchanged, only the server IP/share moves.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: immich-media
+spec:
+  capacity:
+    storage: 1Ti          # arbitrary — SMB ignores it
+  accessModes: ["ReadWriteMany"]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  mountOptions:
+    - vers=3.0
+    - noperm
+    - uid=1000
+    - gid=1000
+    - file_mode=0775
+    - dir_mode=0775
+  csi:
+    driver: smb.csi.k8s.io
+    volumeHandle: immich-media
+    volumeAttributes:
+      source: //192.168.0.25/Videos
+    nodeStageSecretRef:
+      name: smb-creds
+      namespace: default
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: immich-media
+spec:
+  accessModes: ["ReadWriteMany"]
+  storageClassName: ""
+  volumeName: immich-media
+  resources:
+    requests:
+      storage: 1Ti

@@ -1,0 +1,26 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: immich
+spec:
+  interval: 1h
+  path: ./kubernetes/apps/default/immich/app
+  postBuild:
+    substituteFrom:
+      - name: cluster-secrets
+        kind: Secret
+  prune: true
+  # The CNPG Cluster lives in this same unit (one-folder pattern, like mealie), so we
+  # only need the operator's CRDs to exist first. DB-readiness ordering is handled at
+  # runtime by the pod's wait-for-db initContainer + the secretKeyRef on CNPG's
+  # generated password secret.
+  dependsOn:
+    - name: cloudnative-pg
+      namespace: cnpg-system
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  targetNamespace: default
+  wait: false

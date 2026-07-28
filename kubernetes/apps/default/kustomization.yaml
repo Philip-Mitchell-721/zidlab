@@ -11,6 +11,7 @@ resources:
   - ./actual/ks.yaml
   - ./echo/ks.yaml
   - ./apprise/ks.yaml
+  - ./immich/ks.yaml
   - ./kimai/ks.yaml
   - ./mealie/ks.yaml
   - ./ntfy/ks.yaml

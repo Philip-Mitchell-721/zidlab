@@ -1,0 +1,27 @@
+---
+# Thumbnails on fast replicated Longhorn (overlays /data/thumbs). The hot browse path;
+# regeneratable, but keeping it off the slow interim SMB link is the whole point of the
+# split. Grows with the library (small per-photo) — watch it, resize if needed.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: immich-thumbs
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 10Gi
+---
+# ML model cache (CLIP + face models, a few GB). Persist so models aren't re-downloaded
+# on every ML pod restart.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: immich-ml-cache
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 10Gi

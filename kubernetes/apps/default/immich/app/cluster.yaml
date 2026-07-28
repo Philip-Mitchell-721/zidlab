@@ -1,0 +1,37 @@
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: immich-postgres
+spec:
+  # Single primary. Longhorn already replicates the data volume 3x, so a lost node is
+  # recovered by re-attaching the volume + rescheduling the primary (same posture as
+  # mealie/authentik).
+  instances: 1
+  # THE one way Immich's DB differs from Authentik/Mealie's vanilla CNPG: Immich needs
+  # the VectorChord (vchord) + pgvector extensions for smart search / face embeddings,
+  # which the stock CNPG image doesn't ship. tensorchord's image bundles them.
+  # Tag = <pg>-<vchord>; vchord 0.5.3 is inside Immich's accepted range (>=0.3,<2.0).
+  # Fallback if this ever mismatches Immich: ...cloudnative-vectorchord:17-0.4.0
+  imageName: ghcr.io/tensorchord/cloudnative-vectorchord:17.6-0.5.3
+  storage:
+    size: 15Gi
+    storageClass: longhorn
+  postgresql:
+    # VectorChord must be preloaded at server start (it's not a plain SQL-only extension).
+    shared_preload_libraries:
+      - vchord.so
+  bootstrap:
+    initdb:
+      # CNPG generates the `immich-postgres-app` Secret (keys: username, password, dbname,
+      # host, port, uri) — the server's HelmRelease reads `password` from it.
+      database: immich
+      owner: immich
+      # Pre-create the extensions as the superuser at bootstrap so Immich's startup check
+      # finds them already present — the `immich` role is NOT a superuser and can't create
+      # them itself. `vchord CASCADE` pulls in pgvector; `earthdistance CASCADE` pulls in
+      # cube. postInit only runs at INITIAL bootstrap (fine — this is a fresh install).
+      postInitApplicationSQL:
+        - CREATE EXTENSION IF NOT EXISTS vchord CASCADE;
+        - CREATE EXTENSION IF NOT EXISTS cube;
+        - CREATE EXTENSION IF NOT EXISTS earthdistance CASCADE;
