@@ -43,7 +43,13 @@ sonarr:
     api_key: !env_var SONARR_API_KEY
 
     quality_definition:
-      type: series
+      # 'anime' sizes, not 'series': anime encodes are far smaller than live-action
+      # (350-900MB vs 1.5GB+ for a 1080p ep). The 'series' floor (Bluray-1080p min
+      # ~1.2GB) rejected nearly every anime encode, so the auto Seerr->Sonarr search
+      # grabbed almost nothing. 'anime' drops the floor so small encodes qualify.
+      # Instance-wide, but it only relaxes the *minimum* — the max ceilings stay
+      # generous, so the few live-action shows on this instance are unaffected.
+      type: anime
 
     quality_profiles:
       # --- general TV ---
