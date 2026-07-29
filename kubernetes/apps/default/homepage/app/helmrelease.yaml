@@ -9,15 +9,16 @@ spec:
     name: homepage
   interval: 1h
   values:
-    defaultPodOptions:
-      # read-only SA from rbac.yaml — powers the cluster/node metrics widgets
-      serviceAccountName: homepage
     controllers:
       homepage:
         annotations:
           # subPath configMap mounts don't hot-reload; bounce the pod when the
           # config or the API-key secret changes
           reloader.stakater.com/auto: "true"
+        # read-only SA (rbac.yaml) referenced by name — powers the live
+        # cluster/node CPU + memory widgets
+        serviceAccount:
+          name: homepage
         containers:
           app:
             image:
