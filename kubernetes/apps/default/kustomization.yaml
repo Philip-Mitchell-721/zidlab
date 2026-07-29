@@ -12,6 +12,7 @@ resources:
   - ./echo/ks.yaml
   - ./apprise/ks.yaml
   - ./homelogger/ks.yaml
+  - ./homepage/ks.yaml
   - ./immich/ks.yaml
   - ./kimai/ks.yaml
   - ./lubelogger/ks.yaml

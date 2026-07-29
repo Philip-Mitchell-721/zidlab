@@ -1,0 +1,88 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: homepage
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: homepage
+  interval: 1h
+  values:
+    defaultPodOptions:
+      # read-only SA from rbac.yaml — powers the cluster/node metrics widgets
+      serviceAccountName: homepage
+    controllers:
+      homepage:
+        annotations:
+          # subPath configMap mounts don't hot-reload; bounce the pod when the
+          # config or the API-key secret changes
+          reloader.stakater.com/auto: "true"
+        containers:
+          app:
+            image:
+              repository: ghcr.io/gethomepage/homepage
+              tag: v1.13.2
+            env:
+              TZ: America/New_York
+              # Homepage rejects requests whose Host header isn't allow-listed
+              HOMEPAGE_ALLOWED_HOSTS: "homepage.${SECRET_DOMAIN}"
+            envFrom:
+              # {{HOMEPAGE_VAR_*}} API keys referenced from services.yaml
+              - secretRef:
+                  name: homepage-secret
+            probes:
+              liveness:
+                enabled: true
+              readiness:
+                enabled: true
+            resources:
+              requests:
+                cpu: 25m
+                memory: 128Mi
+              limits:
+                memory: 512Mi
+    service:
+      app:
+        ports:
+          http:
+            port: &port 3000
+    persistence:
+      # each config file mounted individually so the rest of /app/config stays
+      # writable (Homepage writes logs + runtime state there)
+      config:
+        type: configMap
+        name: homepage-config
+        globalMounts:
+          - path: /app/config/settings.yaml
+            subPath: settings.yaml
+            readOnly: true
+          - path: /app/config/widgets.yaml
+            subPath: widgets.yaml
+            readOnly: true
+          - path: /app/config/services.yaml
+            subPath: services.yaml
+            readOnly: true
+          - path: /app/config/bookmarks.yaml
+            subPath: bookmarks.yaml
+            readOnly: true
+          - path: /app/config/kubernetes.yaml
+            subPath: kubernetes.yaml
+            readOnly: true
+      logs:
+        type: emptyDir
+        globalMounts:
+          - path: /app/config/logs
+    route:
+      app:
+        # LAN-only — the dashboard links to internal services and holds API
+        # keys server-side. Flip to envoy-external behind Authentik later.
+        hostnames: ["homepage.${SECRET_DOMAIN}"]
+        parentRefs:
+          - name: envoy-internal
+            namespace: network
+            sectionName: https
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: *port

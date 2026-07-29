@@ -1,0 +1,187 @@
+---
+# Homepage config, delivered as individual files subPath-mounted into
+# /app/config (see helmrelease persistence). Edit here + commit; the reloader
+# annotation on the Deployment restarts the pod so subPath changes take effect.
+# API keys are injected as env vars ({{HOMEPAGE_VAR_*}}) from homepage-secret,
+# so this stays safe to commit to the public repo.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: homepage-config
+data:
+  settings.yaml: |
+    title: Zidlab
+    theme: dark
+    color: slate
+    headerStyle: boxed
+    hideVersion: true
+    layout:
+      Media:
+        style: row
+        columns: 4
+      Home:
+        style: row
+        columns: 4
+      Infrastructure:
+        style: row
+        columns: 4
+
+  kubernetes.yaml: |
+    mode: cluster
+
+  widgets.yaml: |
+    - kubernetes:
+        cluster:
+          show: true
+          cpu: true
+          memory: true
+          showLabel: true
+          label: Cluster
+        nodes:
+          show: true
+          cpu: true
+          memory: true
+          showLabel: true
+    - search:
+        provider: duckduckgo
+        target: _blank
+    - datetime:
+        text_size: xl
+        format:
+          timeStyle: short
+          dateStyle: long
+
+  bookmarks.yaml: |
+    - Homelab:
+        - Repo:
+            - abbr: GH
+              href: https://github.com/
+        - Homepage docs:
+            - abbr: HP
+              href: https://gethomepage.dev/
+
+  services.yaml: |
+    - Media:
+        - Plex:
+            icon: plex.png
+            href: http://192.168.0.27:32400/web
+            description: Media server
+        - Overseerr:
+            icon: overseerr.png
+            href: https://seerr.${SECRET_DOMAIN}
+            description: Requests
+            widget:
+              type: overseerr
+              url: http://seerr.media:5055
+              key: "{{HOMEPAGE_VAR_SEERR_KEY}}"
+        - Sonarr:
+            icon: sonarr.png
+            href: https://sonarr.${SECRET_DOMAIN}
+            description: TV shows
+            widget:
+              type: sonarr
+              url: http://sonarr.media:8989
+              key: "{{HOMEPAGE_VAR_SONARR_KEY}}"
+        - Radarr:
+            icon: radarr.png
+            href: https://radarr.${SECRET_DOMAIN}
+            description: Movies
+            widget:
+              type: radarr
+              url: http://radarr.media:7878
+              key: "{{HOMEPAGE_VAR_RADARR_KEY}}"
+        - Prowlarr:
+            icon: prowlarr.png
+            href: https://prowlarr.${SECRET_DOMAIN}
+            description: Indexers
+            widget:
+              type: prowlarr
+              url: http://prowlarr.media:9696
+              key: "{{HOMEPAGE_VAR_PROWLARR_KEY}}"
+        - SABnzbd:
+            icon: sabnzbd.png
+            href: https://sabnzbd.${SECRET_DOMAIN}
+            description: Usenet downloader
+            widget:
+              type: sabnzbd
+              url: http://sabnzbd.media:8080
+              key: "{{HOMEPAGE_VAR_SABNZBD_KEY}}"
+        - Audiobookshelf:
+            icon: audiobookshelf.png
+            href: https://abs.${SECRET_DOMAIN}
+            description: Audiobooks & podcasts
+            widget:
+              type: audiobookshelf
+              url: http://audiobookshelf.media:80
+              key: "{{HOMEPAGE_VAR_ABS_KEY}}"
+        - LazyLibrarian:
+            icon: lazylibrarian.png
+            href: https://lazylibrarian.${SECRET_DOMAIN}
+            description: eBooks
+
+    - Home:
+        - Immich:
+            icon: immich.png
+            href: https://immich.${SECRET_DOMAIN}
+            description: Photos
+            widget:
+              type: immich
+              url: http://immich.default:2283
+              key: "{{HOMEPAGE_VAR_IMMICH_KEY}}"
+              version: 2
+        - Mealie:
+            icon: mealie.png
+            href: https://mealie.${SECRET_DOMAIN}
+            description: Recipes
+            widget:
+              type: mealie
+              url: http://mealie.default:9000
+              key: "{{HOMEPAGE_VAR_MEALIE_KEY}}"
+        - Actual Budget:
+            icon: actual-budget.png
+            href: https://actual.${SECRET_DOMAIN}
+            description: Finances
+        - Kimai:
+            icon: kimai.png
+            href: https://kimai.${SECRET_DOMAIN}
+            description: Time tracking
+        - LubeLogger:
+            icon: mdi-car-wrench
+            href: https://lubelogger.${SECRET_DOMAIN}
+            description: Vehicle maintenance
+        - HomeLogger:
+            icon: mdi-home-heart
+            href: https://homelogger.${SECRET_DOMAIN}
+            description: Home maintenance
+        - ntfy:
+            icon: ntfy.png
+            href: https://ntfy.${SECRET_DOMAIN}
+            description: Push notifications
+
+    - Infrastructure:
+        - AdGuard Home:
+            icon: adguard-home.png
+            # point at the Plex-node origin (.27) — that's what actually
+            # resolves client queries; the in-cluster copy is a passive replica
+            href: http://192.168.0.27:3000
+            description: DNS / ad-blocking (primary)
+            widget:
+              type: adguard
+              url: http://192.168.0.27:3000
+              username: "{{HOMEPAGE_VAR_ADGUARD_USER}}"
+              password: "{{HOMEPAGE_VAR_ADGUARD_PASS}}"
+        - Longhorn:
+            icon: longhorn.png
+            href: https://longhorn.${SECRET_DOMAIN}
+            description: Cluster storage
+            widget:
+              type: longhorn
+              url: http://longhorn-frontend.longhorn-system:80
+        - Grafana:
+            icon: grafana.png
+            href: https://grafana.${SECRET_DOMAIN}
+            description: Metrics & dashboards
+        - Authentik:
+            icon: authentik.png
+            href: https://auth.${SECRET_DOMAIN}
+            description: SSO / identity
