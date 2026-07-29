@@ -1,0 +1,60 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: homelogger
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: homelogger
+  interval: 1h
+  values:
+    controllers:
+      homelogger:
+        # single writer to the RWO data volume (SQLite DB under /root/data)
+        strategy: Recreate
+        containers:
+          app:
+            image:
+              repository: docker.io/francislaboratories/homelogger
+              tag: "0.5.2"
+            env:
+              TZ: America/New_York
+              DB_DIALECT: sqlite
+            probes:
+              liveness:
+                enabled: true
+              readiness:
+                enabled: true
+            resources:
+              requests:
+                cpu: 10m
+                memory: 64Mi
+              limits:
+                memory: 256Mi
+    service:
+      app:
+        ports:
+          http:
+            port: &port 3005
+    persistence:
+      # container runs as root, WORKDIR /root — the SQLite DB + logs live in
+      # /root/data (per the project's own docker-compose), NOT /app/data
+      data:
+        existingClaim: homelogger-data
+        globalMounts:
+          - path: /root/data
+    route:
+      app:
+        # LAN-only, and it MUST stay that way: HomeLogger 0.x has NO login/auth
+        # and ships unauthenticated import/export endpoints. Never expose this
+        # via the Cloudflare tunnel.
+        hostnames: ["homelogger.${SECRET_DOMAIN}"]
+        parentRefs:
+          - name: envoy-internal
+            namespace: network
+            sectionName: https
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: *port

@@ -1,0 +1,65 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: lubelogger
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: lubelogger
+  interval: 1h
+  values:
+    controllers:
+      lubelogger:
+        # single writer to the RWO config volume (SQLite DB lives under /App/data)
+        strategy: Recreate
+        containers:
+          app:
+            image:
+              repository: ghcr.io/hargata/lubelogger
+              tag: v1.7.0
+            env:
+              TZ: America/New_York
+              ASPNETCORE_ENVIRONMENT: Production
+              # keep the console to warnings+ (avoids noisy per-request info logs)
+              LOGGING__LOGLEVEL__DEFAULT: Warning
+            probes:
+              liveness:
+                enabled: true
+              readiness:
+                enabled: true
+            resources:
+              requests:
+                cpu: 25m
+                memory: 128Mi
+              limits:
+                memory: 512Mi
+    service:
+      app:
+        ports:
+          http:
+            port: &port 8080
+    persistence:
+      config:
+        existingClaim: lubelogger-config
+        globalMounts:
+          # SQLite DB, uploaded receipts/documents/images, and config
+          - path: /App/data
+            subPath: data
+          # ASP.NET DataProtection keys — persist so auth cookies / encrypted
+          # fields survive pod restarts (regenerated + sessions lost otherwise)
+          - path: /root/.aspnet/DataProtection-Keys
+            subPath: keys
+    route:
+      app:
+        # LAN-only — LubeLogger's built-in login is the gate; not exposed via
+        # the Cloudflare tunnel. Flip to envoy-external + Authentik OIDC later.
+        hostnames: ["lubelogger.${SECRET_DOMAIN}"]
+        parentRefs:
+          - name: envoy-internal
+            namespace: network
+            sectionName: https
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: *port
