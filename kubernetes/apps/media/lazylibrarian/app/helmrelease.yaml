@@ -1,0 +1,67 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: lazylibrarian
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: lazylibrarian
+  interval: 1h
+  values:
+    controllers:
+      lazylibrarian:
+        # single writer to the RWO config volume
+        strategy: Recreate
+        containers:
+          app:
+            image:
+              repository: lscr.io/linuxserver/lazylibrarian
+              tag: 36795e7c-ls319
+            env:
+              PUID: 1000
+              PGID: 1000
+              TZ: America/New_York
+            probes:
+              liveness:
+                enabled: true
+              readiness:
+                enabled: true
+            resources:
+              requests:
+                cpu: 50m
+                memory: 128Mi
+              # library scans / metadata lookups are light and bursty
+              limits:
+                memory: 1Gi
+    service:
+      app:
+        ports:
+          http:
+            port: &port 5299
+    persistence:
+      config:
+        existingClaim: lazylibrarian-config
+        globalMounts:
+          - path: /config
+      # shared library volume — reads SABnzbd's completed downloads under /data/usenet and
+      # hardlinks finished books into the folders ABS serves read-only: ebooks -> /data/EBooks
+      # (ABS /ebooks), audiobooks -> "/data/Audio Books" (ABS /audiobooks, shared with
+      # Libation's Audible imports). Same volume as the *arrs, so /data is one filesystem =
+      # real hardlinks.
+      media:
+        existingClaim: media-data
+        globalMounts:
+          - path: /data
+    route:
+      app:
+        # LAN-only, like the *arr UIs — not exposed via the Cloudflare tunnel
+        hostnames: ["lazylibrarian.${SECRET_DOMAIN}"]
+        parentRefs:
+          - name: envoy-internal
+            namespace: network
+            sectionName: https
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: *port
