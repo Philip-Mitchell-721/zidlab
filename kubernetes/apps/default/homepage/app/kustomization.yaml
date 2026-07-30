@@ -4,6 +4,7 @@ kind: Kustomization
 resources:
   - ./ocirepository.yaml
   - ./rbac.yaml
+  - ./sabnzbd-alias.yaml
   - ./configmap.yaml
   - ./secret.sops.yaml
   - ./helmrelease.yaml

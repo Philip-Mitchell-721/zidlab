@@ -104,7 +104,9 @@ data:
             description: Usenet downloader
             widget:
               type: sabnzbd
-              url: http://sabnzbd.media:8080
+              # via the ExternalName alias (sabnzbd-alias.yaml): SAB's
+              # host_whitelist accepts "sabnzbd" but 403s "sabnzbd.media"
+              url: http://sabnzbd:8080
               key: "{{HOMEPAGE_VAR_SABNZBD_KEY}}"
         - Audiobookshelf:
             icon: audiobookshelf.png
@@ -137,6 +139,9 @@ data:
               type: mealie
               url: http://mealie.default:9000
               key: "{{HOMEPAGE_VAR_MEALIE_KEY}}"
+              # Mealie 1.x households API (/api/households/statistics);
+              # v1 default hits /api/groups/statistics -> 404 here
+              version: 2
         - Actual Budget:
             icon: actual-budget.png
             href: https://actual.${SECRET_DOMAIN}

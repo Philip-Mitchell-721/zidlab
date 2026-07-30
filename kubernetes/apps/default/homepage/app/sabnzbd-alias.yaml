@@ -1,0 +1,13 @@
+---
+# SABnzbd enforces hostname verification (host_whitelist) and accepts the bare
+# name "sabnzbd" (what the *arrs use from within the media ns) but 403s the
+# cross-namespace FQDN "sabnzbd.media" that Homepage would otherwise send.
+# This ExternalName aliases "sabnzbd" into the default ns so Homepage can call
+# http://sabnzbd:8080 and present the whitelisted "sabnzbd" Host header.
+apiVersion: v1
+kind: Service
+metadata:
+  name: sabnzbd
+spec:
+  type: ExternalName
+  externalName: sabnzbd.media.svc.cluster.local
