@@ -23,6 +23,24 @@ spec:
             secretKeyRef:
               name: authentik-postgres-app
               key: password
+        # --- Email via SMTP2GO (system mail: password reset, email verification, etc.) ---
+        # Non-secret settings live here; the SMTP username + password come from the SOPS
+        # "authentik-secret" (keys AUTHENTIK_EMAIL__USERNAME / __PASSWORD) via envFrom below.
+        # SMTP2GO: host mail.smtp2go.com; port 2525 = STARTTLS (recommended, widely open;
+        # 587 is the standard fallback). Add the two secret keys before this takes effect
+        # (see docs/smtp2go-setup.md).
+        - name: AUTHENTIK_EMAIL__HOST
+          value: "mail.smtp2go.com"
+        - name: AUTHENTIK_EMAIL__PORT
+          value: "2525"
+        - name: AUTHENTIK_EMAIL__USE_TLS
+          value: "true"
+        - name: AUTHENTIK_EMAIL__USE_SSL
+          value: "false"
+        - name: AUTHENTIK_EMAIL__TIMEOUT
+          value: "10"
+        - name: AUTHENTIK_EMAIL__FROM
+          value: "authentik@${SECRET_DOMAIN}"
       envFrom:
         - secretRef:
             name: authentik-secret
