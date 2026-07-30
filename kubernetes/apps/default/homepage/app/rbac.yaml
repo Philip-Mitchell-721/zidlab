@@ -18,6 +18,15 @@ rules:
   - apiGroups: [metrics.k8s.io]
     resources: [nodes, pods]
     verbs: [get, list]
+  # Homepage's k8s integration always enumerates ingresses/HTTPRoutes; grant
+  # read so it doesn't 403-spam the logs (nothing is auto-discovered — none of
+  # our routes carry the gethomepage.dev/* annotations)
+  - apiGroups: [networking.k8s.io]
+    resources: [ingresses]
+    verbs: [get, list]
+  - apiGroups: [gateway.networking.k8s.io]
+    resources: [httproutes]
+    verbs: [get, list]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

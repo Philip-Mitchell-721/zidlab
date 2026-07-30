@@ -126,7 +126,7 @@ data:
             description: Photos
             widget:
               type: immich
-              url: http://immich.default:2283
+              url: http://immich-app.default:2283
               key: "{{HOMEPAGE_VAR_IMMICH_KEY}}"
               version: 2
         - Mealie:
