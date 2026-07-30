@@ -17,14 +17,11 @@ data:
     hideVersion: true
     layout:
       Media:
-        style: row
-        columns: 4
+        style: columns
       Home:
-        style: row
-        columns: 4
+        style: columns
       Infrastructure:
-        style: row
-        columns: 4
+        style: columns
 
   kubernetes.yaml: |
     mode: cluster
@@ -43,7 +40,7 @@ data:
           memory: true
           showLabel: true
     - search:
-        provider: duckduckgo
+        provider: google
         target: _blank
     - datetime:
         text_size: xl
