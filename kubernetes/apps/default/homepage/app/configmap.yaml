@@ -15,6 +15,11 @@ data:
     color: slate
     headerStyle: boxed
     hideVersion: true
+    # Longhorn is an *information* widget (see widgets.yaml); its backend URL
+    # lives here under providers, not in a service widget block.
+    providers:
+      longhorn:
+        url: http://longhorn-frontend.longhorn-system:80
     layout:
       Media:
         style: columns
@@ -39,6 +44,11 @@ data:
           cpu: true
           memory: true
           showLabel: true
+    - longhorn:
+        expanded: true
+        total: true
+        labels: true
+        nodes: true
     - search:
         provider: google
         target: _blank
@@ -63,6 +73,20 @@ data:
             icon: plex.png
             href: http://192.168.0.27:32400/web
             description: Media server
+            widget:
+              type: plex
+              # reached over the LAN via Cilium egress SNAT (same as AdGuard .27)
+              url: http://192.168.0.27:32400
+              key: "{{HOMEPAGE_VAR_PLEX_TOKEN}}"
+        - Tautulli:
+            icon: tautulli.png
+            href: https://tautulli.${SECRET_DOMAIN}
+            description: Plex activity & streams
+            # widget added once Tautulli is set up and has an API key:
+            #   widget:
+            #     type: tautulli
+            #     url: http://tautulli.media:8181
+            #     key: "{{HOMEPAGE_VAR_TAUTULLI_KEY}}"
         - Overseerr:
             icon: overseerr.png
             href: https://seerr.${SECRET_DOMAIN}
@@ -176,9 +200,8 @@ data:
             icon: longhorn.png
             href: https://longhorn.${SECRET_DOMAIN}
             description: Cluster storage
-            widget:
-              type: longhorn
-              url: http://longhorn-frontend.longhorn-system:80
+            # storage stats render in the top-strip "longhorn" info widget
+            # (widgets.yaml) — longhorn is not a valid service widget type
         - Grafana:
             icon: grafana.png
             href: https://grafana.${SECRET_DOMAIN}
