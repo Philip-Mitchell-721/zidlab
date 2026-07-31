@@ -82,11 +82,10 @@ data:
             icon: tautulli.png
             href: https://tautulli.${SECRET_DOMAIN}
             description: Plex activity & streams
-            # widget added once Tautulli is set up and has an API key:
-            #   widget:
-            #     type: tautulli
-            #     url: http://tautulli.media:8181
-            #     key: "{{HOMEPAGE_VAR_TAUTULLI_KEY}}"
+            widget:
+              type: tautulli
+              url: http://tautulli.media:8181
+              key: "{{HOMEPAGE_VAR_TAUTULLI_KEY}}"
         - Overseerr:
             icon: overseerr.png
             href: https://seerr.${SECRET_DOMAIN}
