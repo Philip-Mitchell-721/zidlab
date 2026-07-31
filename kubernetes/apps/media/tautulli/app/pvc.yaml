@@ -1,0 +1,14 @@
+---
+# Tautulli config: SQLite history DB + config.ini + the Plex link. Small,
+# precious, replicated block on Longhorn. Its own API key lives here too
+# (generated in the UI post-deploy), so this is the durability boundary.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tautulli-config
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 5Gi
