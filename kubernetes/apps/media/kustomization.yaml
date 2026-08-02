@@ -10,6 +10,7 @@ resources:
   - ./namespace.yaml
   - ./audiobookshelf/ks.yaml
   - ./bazarr/ks.yaml
+  - ./bindery/ks.yaml
   - ./lazylibrarian/ks.yaml
   - ./media-share/ks.yaml
   - ./prowlarr/ks.yaml

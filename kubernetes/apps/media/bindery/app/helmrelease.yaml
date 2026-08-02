@@ -1,0 +1,116 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: bindery
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: bindery
+  interval: 1h
+  values:
+    controllers:
+      bindery:
+        # single writer to the RWO config volume
+        strategy: Recreate
+        containers:
+          app:
+            image:
+              repository: ghcr.io/vavallee/bindery
+              tag: v1.28.1
+            env:
+              TZ: America/New_York
+              # Bindery's distroless image has no shell and no gosu, so it cannot
+              # drop privileges itself. These are fail-fast assertions that the
+              # pod securityContext below matches — NOT a user switcher.
+              BINDERY_PUID: 1000
+              BINDERY_PGID: 1000
+              BINDERY_DATA_DIR: /config
+              BINDERY_DB_PATH: /config/bindery.db
+              # Library and download dirs are deliberately SUBPATHS OF ONE MOUNT
+              # (/data below) so they share a device id and imports become real
+              # hardlinks. Two separate mounts of the same share would report
+              # different device ids and silently fall back to slow full copies.
+              BINDERY_LIBRARY_DIR: /data/EBooks
+              BINDERY_AUDIOBOOK_DIR: "/data/Audio Books"
+              BINDERY_DOWNLOAD_DIR: /data/usenet/complete
+              # anonymous usage ping — off for a private homelab
+              BINDERY_TELEMETRY_DISABLED: "true"
+            # no documented health endpoint, so probe the socket rather than
+            # guessing at a path that may not exist
+            probes:
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  tcpSocket:
+                    port: 8787
+                  initialDelaySeconds: 15
+                  periodSeconds: 30
+                  timeoutSeconds: 5
+                  failureThreshold: 5
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  tcpSocket:
+                    port: 8787
+                  initialDelaySeconds: 15
+                  periodSeconds: 20
+                  timeoutSeconds: 5
+                  failureThreshold: 5
+            resources:
+              requests:
+                cpu: 50m
+                memory: 128Mi
+              # metadata lookups and indexer searches are light and bursty
+              limits:
+                memory: 1Gi
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop: ["ALL"]
+              seccompProfile:
+                type: RuntimeDefault
+    defaultPodOptions:
+      securityContext:
+        # pin to 1000:1000 to match the rest of the media stack; fsGroup is what
+        # makes the root-owned Longhorn config volume writable by a non-root
+        # container — same fix already used by recyclarr and seerr
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+      # upstream asks for >=25s: BINDERY_SHUTDOWN_GRACE (10s) drains HTTP and
+      # BINDERY_JOBS_DRAIN_GRACE (15s) lets in-flight import jobs finish
+      terminationGracePeriodSeconds: 30
+    service:
+      app:
+        ports:
+          http:
+            port: &port 8787
+    persistence:
+      config:
+        existingClaim: bindery-config
+        globalMounts:
+          - path: /config
+      # ONE mount of the shared library volume — the *_DIR env vars above point
+      # at subpaths of it. Same volume as the *arrs and LazyLibrarian, so /data
+      # is a single filesystem and imports hardlink instead of copying.
+      media:
+        existingClaim: media-data
+        globalMounts:
+          - path: /data
+    route:
+      app:
+        # LAN-only, like the other media UIs — not exposed via the Cloudflare tunnel
+        hostnames: ["bindery.${SECRET_DOMAIN}"]
+        parentRefs:
+          - name: envoy-internal
+            namespace: network
+            sectionName: https
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: *port
