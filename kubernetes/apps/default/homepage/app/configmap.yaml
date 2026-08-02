@@ -122,13 +122,10 @@ data:
             icon: bazarr.png
             href: https://bazarr.${SECRET_DOMAIN}
             description: Subtitles
-            # Widget shows missing-subtitle counts. Needs Bazarr's API key:
-            # add HOMEPAGE_VAR_BAZARR_KEY to homepage-secret, then uncomment
-            # the block below (see docs/bazarr-setup.md).
-            # widget:
-            #   type: bazarr
-            #   url: http://bazarr.media:6767
-            #   key: "{{HOMEPAGE_VAR_BAZARR_KEY}}"
+            widget:
+              type: bazarr
+              url: http://bazarr.media:6767
+              key: "{{HOMEPAGE_VAR_BAZARR_KEY}}"
         - SABnzbd:
             icon: sabnzbd.png
             href: https://sabnzbd.${SECRET_DOMAIN}
