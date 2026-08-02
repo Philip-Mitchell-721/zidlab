@@ -1,0 +1,67 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: ntfy-alertmanager
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: ntfy-alertmanager
+  interval: 1h
+  values:
+    controllers:
+      ntfy-alertmanager:
+        annotations:
+          # subPath mounts don't hot-reload — bounce the pod when the config or
+          # the ntfy token changes
+          reloader.stakater.com/auto: "true"
+        containers:
+          app:
+            image:
+              repository: docker.io/xenrox/ntfy-alertmanager
+              tag: 1.0.0
+            env:
+              TZ: America/New_York
+            probes:
+              # The bridge serves only the webhook endpoint (no /health path), so
+              # probe the socket rather than guessing an HTTP route.
+              liveness: &probe
+                enabled: true
+                custom: true
+                spec:
+                  tcpSocket:
+                    port: &port 8080
+                  initialDelaySeconds: 5
+                  periodSeconds: 30
+              readiness: *probe
+            resources:
+              requests:
+                cpu: 10m
+                memory: 32Mi
+              limits:
+                memory: 128Mi
+    service:
+      app:
+        ports:
+          http:
+            port: *port
+    persistence:
+      # Both halves of the scfg config land in /etc/ntfy-alertmanager/; the
+      # non-secret file `include`s the secret one at startup.
+      config:
+        type: configMap
+        name: ntfy-alertmanager-config
+        globalMounts:
+          - path: /etc/ntfy-alertmanager/config
+            subPath: config
+            readOnly: true
+      ntfy-secret:
+        type: secret
+        name: ntfy-alertmanager-secret
+        globalMounts:
+          - path: /etc/ntfy-alertmanager/ntfy.scfg
+            subPath: ntfy.scfg
+            readOnly: true
+    # No HTTPRoute on purpose. Only Alertmanager talks to this, in-cluster, at
+    # ntfy-alertmanager.observability.svc.cluster.local:8080. Exposing it would
+    # only be needed for the silence-button callback, which we don't enable.

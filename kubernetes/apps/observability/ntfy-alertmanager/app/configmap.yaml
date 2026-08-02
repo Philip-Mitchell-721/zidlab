@@ -1,0 +1,45 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ntfy-alertmanager-config
+data:
+  # scfg format (https://git.sr.ht/~emersion/scfg). This is the NON-secret half —
+  # the `ntfy { }` block (server/topic/access-token) and the webhook basic-auth
+  # credentials live in the SOPS secret mounted next to this file.
+  config: |
+    include /etc/ntfy-alertmanager/ntfy.scfg
+
+    http-address :8080
+    log-level info
+    log-format text
+
+    # One ntfy message per alert, not one per Alertmanager group. A grouped
+    # "3 alerts firing" push is close to useless on a phone.
+    alert-mode single
+
+    labels {
+      order "severity"
+
+      # priority 5 is ntfy's max — it breaks through Do Not Disturb. That is the
+      # whole reason for this bridge rather than a generic webhook, so it is
+      # reserved strictly for severity=critical.
+      severity "critical" {
+        priority 5
+        tags "rotating_light"
+      }
+
+      # priority 3 is ntfy's default: it notifies but stays silent under DND.
+      severity "warning" {
+        priority 3
+        tags "warning"
+      }
+    }
+
+    # Edit the original notification in place when an alert resolves rather than
+    # stacking a second one, and drop it to the lowest priority so it never buzzes.
+    resolved {
+      update-notification true
+      tags "white_check_mark"
+      priority 1
+    }

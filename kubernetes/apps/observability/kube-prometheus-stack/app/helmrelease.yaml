@@ -15,7 +15,66 @@ spec:
       enabled: false
 
     alertmanager:
+      # Routing structure lives here in git and stays readable/diffable; the only
+      # credential on this path is the webhook basic-auth password, pulled from the
+      # ntfy-alertmanager-secret via password_file (mounted by alertmanagerSpec.secrets).
+      config:
+        route:
+          receiver: ntfy
+          group_by: [alertname, namespace]
+          group_wait: 30s
+          group_interval: 5m
+          # Keep nagging about something still broken, but not often enough to
+          # train us to ignore the phone.
+          repeat_interval: 4h
+          routes:
+            # Watchdog fires permanently BY DESIGN — it's a liveness heartbeat, not
+            # a fault. It must never reach the phone. Once a healthchecks.io check
+            # exists this becomes the dead-man's switch receiver: if these pings
+            # stop, the cluster (or Prometheus) is down and an external service
+            # tells us, which is the one thing in-cluster monitoring cannot do.
+            - receiver: "null"
+              matchers:
+                - alertname = "Watchdog"
+
+            # A control signal for the inhibit rules below, not an alert.
+            - receiver: "null"
+              matchers:
+                - alertname = "InfoInhibitor"
+
+            # These assume N-1 scheduling headroom that a 3-node all-control-plane
+            # cluster can't satisfy, so they'd fire permanently and train us to
+            # ignore everything else.
+            - receiver: "null"
+              matchers:
+                - alertname =~ "KubeCPUOvercommit|KubeMemoryOvercommit|KubeCPUQuotaOvercommit"
+
+            # Informational chatter: CPUThrottlingHigh, KubeletTooManyPods,
+            # NodeCPUHighUsage, KubeQuota*, KubeNodeEviction/Pressure.
+            - receiver: "null"
+              matchers:
+                - severity = "info"
+
+        receivers:
+          - name: "null"
+
+          - name: ntfy
+            webhook_configs:
+              # The bridge translates Alertmanager's fixed JSON schema into an ntfy
+              # push with severity-mapped priority. Alertmanager can't template a
+              # webhook body itself (prometheus/alertmanager#1496), which is why a
+              # translator sits here rather than posting straight to ntfy/Apprise.
+              - url: http://ntfy-alertmanager.observability.svc.cluster.local:8080
+                send_resolved: true
+                http_config:
+                  basic_auth:
+                    username: webhook
+                    password_file: /etc/alertmanager/secrets/ntfy-alertmanager-secret/webhook-password
+
       alertmanagerSpec:
+        # Mounts at /etc/alertmanager/secrets/<name>/<key>
+        secrets:
+          - ntfy-alertmanager-secret
         storage:
           volumeClaimTemplate:
             spec:
