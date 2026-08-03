@@ -1,0 +1,136 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: rallly
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: rallly
+  interval: 1h
+  values:
+    controllers:
+      rallly:
+        # Rallly runs Prisma migrations on boot. Recreate keeps exactly one pod doing
+        # that at a time — with RollingUpdate two pods briefly overlap and race the
+        # migration. There's no RWO volume here (all state is in Postgres), so this
+        # costs a few seconds of downtime on upgrade and nothing else.
+        strategy: Recreate
+        annotations:
+          reloader.stakater.com/auto: "true"
+        initContainers:
+          # Block startup until Postgres accepts TCP — without this the pod races ahead
+          # of the DB and crash-loops on the boot-time migration.
+          wait-for-db:
+            image:
+              repository: busybox
+              tag: "1.37"
+            command:
+              - sh
+              - -c
+              - until nc -z rallly-postgres-rw 5432; do echo "waiting for rallly-postgres-rw:5432"; sleep 2; done
+        containers:
+          app:
+            image:
+              repository: docker.io/lukevella/rallly
+              # NOTE: Docker Hub tags have NO "v" prefix (4.11.1), even though the
+              # GitHub release is tagged v4.11.1. Renovate will bump this.
+              tag: 4.11.1
+            env:
+              TZ: America/New_York
+              # Public URL. Rallly injects this at runtime (not baked at build), and it
+              # backs the magic-link URLs in outgoing email — if it's wrong, login mails
+              # point somewhere unreachable.
+              NEXT_PUBLIC_BASE_URL: https://rallly.${SECRET_DOMAIN}
+              # --- Postgres (CNPG-managed) ---
+              # CNPG's generated secret carries a ready-made `uri` key
+              # (postgresql://rallly:<pw>@rallly-postgres-rw:5432/rallly), which is
+              # exactly the shape Prisma wants — no string-building with the password.
+              DATABASE_URL:
+                valueFrom:
+                  secretKeyRef:
+                    name: rallly-postgres-app
+                    key: uri
+              # --- Email via SMTP2GO (magic-link login + poll notifications) ---
+              # Same relay as Authentik. Port 2525 = STARTTLS, so SMTP_SECURE stays
+              # false (that flag means *implicit* TLS / port 465). Credentials come
+              # from the SOPS secret below. See docs/smtp2go-setup.md.
+              SMTP_HOST: mail.smtp2go.com
+              SMTP_PORT: "2525"
+              SMTP_SECURE: "false"
+              NOREPLY_EMAIL: rallly@${SECRET_DOMAIN}
+              NOREPLY_EMAIL_NAME: Zidlab Scheduling
+              # Shown to users as the "contact a human" address — a real inbox.
+              SUPPORT_EMAIL: philmitchell721@gmail.com
+              # First account to sign in with this address claims admin at
+              # /control-panel.
+              INITIAL_ADMIN_EMAIL: philmitchell721@gmail.com
+              # --- Who may hold an ACCOUNT (not who may vote) ---
+              # This is the whole security model for a deliberately-public app. It gates
+              # registration + login only; guest voters answer a poll with just a name
+              # and never register, so grandparents are unaffected.
+              # ⚠️ VERIFY on the first real poll that a guest can still vote (see the
+              # runbook). If it turns out to gate guests too, delete this line — the
+              # instance is still safe because REGISTRATION is the only other door.
+              # ALLOWED_EMAILS lives in the SOPS secret below, NOT here — this repo is
+              # public and the list holds a personal address that shouldn't be scraped
+              # out of git history. (Keep it there: a key set in this `env:` map would
+              # override the envFrom value.) Currently Phil + Meghan.
+              #
+              # Both holding accounts is fine: Rallly is AGPLv3 end-to-end, so multi-user
+              # self-hosting is a right, not a purchase — upstream *asks* for a license
+              # key on the honor system (reminders only, nothing is disabled), and the
+              # paid tier really targets Spaces/seats, which two people creating their
+              # own polls never touch. Worth donating if it earns its keep; not required.
+              # --- OIDC via Authentik — PHASE 2, intentionally off ---
+              # Not wired yet: it would only cover the poll-CREATOR login (one account),
+              # and the front door has to stay open for guest voters either way, so it
+              # buys little for the setup cost. To enable: create an OAuth2/OIDC
+              # provider in Authentik (redirect https://rallly.<domain>/api/auth/callback/oidc),
+              # add OIDC_CLIENT_ID/OIDC_CLIENT_SECRET to the SOPS secret, and uncomment:
+              # OIDC_NAME: Authentik
+              # OIDC_DISCOVERY_URL: https://auth.${SECRET_DOMAIN}/application/o/rallly/.well-known/openid-configuration
+            envFrom:
+              - secretRef:
+                  name: rallly-secret   # SECRET_PASSWORD + SMTP_USER + SMTP_PWD
+            probes:
+              liveness:
+                enabled: true
+              readiness:
+                enabled: true
+            resources:
+              requests:
+                cpu: 50m
+                memory: 256Mi
+              limits:
+                memory: 1Gi
+    service:
+      app:
+        ports:
+          http:
+            # Next.js standalone server.
+            port: 3000
+    # No PVC on purpose. All state lives in Postgres; the only thing that would need a
+    # volume is S3-backed file uploads (avatars/images), and S3_* is deliberately unset
+    # — the upstream compose stack bundles Garage for that, which we're not running.
+    # Core polling is unaffected.
+    route:
+      app:
+        # PUBLIC via envoy-external + Cloudflare tunnel (external-dns publishes
+        # rallly.<domain>).
+        #
+        # ⚠️ Deliberately NOT behind Authentik, unlike actual/mealie. The entire point
+        # is that Phil's mother and Meghan's parents can open a link and vote without an
+        # account — forward-auth here would lock out every participant and make the app
+        # pointless. Exposure is bounded by ALLOWED_EMAILS above: anyone can *vote* on a
+        # poll whose (unguessable) URL they were sent, but only an allow-listed address
+        # can hold an account and create polls.
+        hostnames: ["rallly.${SECRET_DOMAIN}"]
+        parentRefs:
+          - name: envoy-external
+            namespace: network
+            sectionName: https
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: 3000

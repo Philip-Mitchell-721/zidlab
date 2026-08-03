@@ -18,3 +18,4 @@ resources:
   - ./lubelogger/ks.yaml
   - ./mealie/ks.yaml
   - ./ntfy/ks.yaml
+  - ./rallly/ks.yaml

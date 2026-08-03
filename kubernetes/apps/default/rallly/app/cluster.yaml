@@ -1,0 +1,22 @@
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: rallly-postgres
+spec:
+  # Single primary — Longhorn already replicates the data volume 3x, so a lost node is
+  # recovered by re-attaching the volume + rescheduling the primary. Same trade-off as
+  # mealie/authentik: don't stack CNPG replicas on top of Longhorn replicas.
+  instances: 1
+  storage:
+    # Rallly's dataset is genuinely tiny (polls, options, votes — all rows, no blobs;
+    # file uploads are disabled, see the helmrelease). 8Gi is almost entirely WAL +
+    # growth headroom, and matches the sibling apps so a PVC resize never comes up.
+    size: 8Gi
+    storageClass: longhorn
+  bootstrap:
+    initdb:
+      # CNPG generates the `rallly-postgres-app` Secret (keys: username, password,
+      # dbname, host, port, uri). The app reads `uri` straight into DATABASE_URL.
+      database: rallly
+      owner: rallly
