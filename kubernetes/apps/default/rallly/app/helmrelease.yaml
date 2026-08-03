@@ -82,14 +82,29 @@ spec:
               # key on the honor system (reminders only, nothing is disabled), and the
               # paid tier really targets Spaces/seats, which two people creating their
               # own polls never touch. Worth donating if it earns its keep; not required.
-              # --- OIDC via Authentik — PHASE 2, intentionally off ---
-              # Not wired yet: it would only cover the poll-CREATOR login (one account),
-              # and the front door has to stay open for guest voters either way, so it
-              # buys little for the setup cost. To enable: create an OAuth2/OIDC
-              # provider in Authentik (redirect https://rallly.<domain>/api/auth/callback/oidc),
-              # add OIDC_CLIENT_ID/OIDC_CLIENT_SECRET to the SOPS secret, and uncomment:
-              # OIDC_NAME: Authentik
-              # OIDC_DISCOVERY_URL: https://auth.${SECRET_DOMAIN}/application/o/rallly/.well-known/openid-configuration
+              # --- OIDC via Authentik ---
+              # This is an IN-APP login provider, not gateway forward-auth: it changes
+              # only the "Sign in" button. Guest voters still open a poll link and vote
+              # with no authentication at all, which is why this is compatible with the
+              # public route (forward-auth would not be).
+              #
+              # Authentik provider redirect URI must be exactly:
+              #   https://rallly.${SECRET_DOMAIN}/api/auth/callback/oidc
+              # and the provider needs the openid + profile + email scope mappings —
+              # Rallly reads the `name` and `email` claims and dies with
+              # "email: undefined" if profile/email are missing (upstream #1052).
+              # Client ID/secret come from the SOPS secret via envFrom.
+              OIDC_NAME: Authentik
+              OIDC_DISCOVERY_URL: https://auth.${SECRET_DOMAIN}/application/o/rallly/.well-known/openid-configuration
+              # Magic-link login stays ON for now as the break-glass path while OIDC is
+              # unproven. Flip to "false" to make Authentik the only account door once a
+              # real Authentik login has landed — same staged approach as mealie.
+              # ⚠️ Do NOT sign in via magic link before OIDC works: NextAuth refuses to
+              # link an email-provider account to an OAuth one for the same address, so
+              # a pre-existing account breaks OIDC with `account_not_linked` (upstream
+              # #2155, open). The DB was empty (0 users, 0 accounts) when this was wired,
+              # which is the clean case. If it ever happens, delete the user row.
+              EMAIL_LOGIN_ENABLED: "true"
             envFrom:
               - secretRef:
                   name: rallly-secret   # SECRET_PASSWORD + SMTP_USER + SMTP_PWD
