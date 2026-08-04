@@ -69,9 +69,8 @@ spec:
               # This is the whole security model for a deliberately-public app. It gates
               # registration + login only; guest voters answer a poll with just a name
               # and never register, so grandparents are unaffected.
-              # ⚠️ VERIFY on the first real poll that a guest can still vote (see the
-              # runbook). If it turns out to gate guests too, delete this line — the
-              # instance is still safe because REGISTRATION is the only other door.
+              # VERIFIED 2026-08-03: a guest voted on a poll link with this list set —
+              # it does not gate participation, only accounts.
               # ALLOWED_EMAILS lives in the SOPS secret below, NOT here — this repo is
               # public and the list holds a personal address that shouldn't be scraped
               # out of git history. (Keep it there: a key set in this `env:` map would
@@ -96,15 +95,16 @@ spec:
               # Client ID/secret come from the SOPS secret via envFrom.
               OIDC_NAME: Authentik
               OIDC_DISCOVERY_URL: https://auth.${SECRET_DOMAIN}/application/o/rallly/.well-known/openid-configuration
-              # Magic-link login stays ON for now as the break-glass path while OIDC is
-              # unproven. Flip to "false" to make Authentik the only account door once a
-              # real Authentik login has landed — same staged approach as mealie.
-              # ⚠️ Do NOT sign in via magic link before OIDC works: NextAuth refuses to
-              # link an email-provider account to an OAuth one for the same address, so
-              # a pre-existing account breaks OIDC with `account_not_linked` (upstream
-              # #2155, open). The DB was empty (0 users, 0 accounts) when this was wired,
-              # which is the clean case. If it ever happens, delete the user row.
-              EMAIL_LOGIN_ENABLED: "true"
+              # OIDC-ONLY as of 2026-08-03: magic-link login disabled, Authentik is the
+              # sole account door (matches actual/mealie). Both Phil + Meghan verified
+              # signing in via Authentik before this was flipped.
+              # ⚠️ If you ever re-enable this, do NOT sign in by magic link with an
+              # address that already has an OAuth account — NextAuth won't link the two
+              # and OIDC then fails with `account_not_linked` (upstream #2155, open).
+              # Recovery is deleting the user row.
+              # Break-glass if Authentik is down: set this back to "true", commit, and
+              # Flux + reloader roll a new pod in ~30s.
+              EMAIL_LOGIN_ENABLED: "false"
             envFrom:
               - secretRef:
                   name: rallly-secret   # SECRET_PASSWORD + SMTP_USER + SMTP_PWD
