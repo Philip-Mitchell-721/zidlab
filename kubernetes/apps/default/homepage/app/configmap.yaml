@@ -144,10 +144,12 @@ data:
               type: audiobookshelf
               url: http://audiobookshelf.media:80
               key: "{{HOMEPAGE_VAR_ABS_KEY}}"
-        - LazyLibrarian:
-            icon: lazylibrarian.png
-            href: https://lazylibrarian.${SECRET_DOMAIN}
-            description: eBooks
+        - Bindery:
+            # dashboard-icons has no bindery.png yet, so fall back to an MDI
+            # glyph tinted with Bindery's own emerald accent
+            icon: mdi-bookshelf-#10b981
+            href: https://bindery.${SECRET_DOMAIN}
+            description: Books & audiobooks
 
     - Home:
         - Immich:
