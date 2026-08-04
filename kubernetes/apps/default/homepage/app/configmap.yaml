@@ -188,6 +188,13 @@ data:
             icon: mdi-home-heart
             href: https://homelogger.${SECRET_DOMAIN}
             description: Home maintenance
+        - Rallly:
+            icon: rallly.png
+            href: https://rallly.${SECRET_DOMAIN}
+            description: Scheduling polls
+            # No Homepage widget exists for Rallly — link only. Public route, but
+            # Authentik guards the login; poll links themselves are open to guests
+            # by design, so nothing sensitive is reachable from this tile.
         - ntfy:
             icon: ntfy.png
             href: https://ntfy.${SECRET_DOMAIN}
