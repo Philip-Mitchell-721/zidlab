@@ -96,7 +96,7 @@ spec:
         globalMounts:
           - path: /config
       # ONE mount of the shared library volume — the *_DIR env vars above point
-      # at subpaths of it. Same volume as the *arrs and LazyLibrarian, so /data
+      # at subpaths of it. Same volume as the *arrs, so /data
       # is a single filesystem and imports hardlink instead of copying.
       media:
         existingClaim: media-data
