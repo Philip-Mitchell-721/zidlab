@@ -1,4 +1,14 @@
 # yaml-language-server: $schema=https://schemas.recyclarr.dev/v8/config-schema.json
+#
+# Profiles track the TRaSH guides as closely as possible. Every deviation from a
+# guide default is listed here, and nowhere else:
+#
+#   1. Bluray-1080p sits BELOW WEB 1080p in all three profiles, so WEB is always
+#      preferred and Bluray is only reached when no WEB release exists.
+#   2. The anime profile excludes Bluray-1080p Remux (~7GB/ep).
+#   3. The anime profile scores "Dubs Only" 0 instead of -10000 (we watch dubs).
+#   4. Profiles are renamed "Trash <kind> 1080p" so they're recognisable in the UI.
+#
 radarr:
   radarr-main:
     base_url: http://radarr.media.svc.cluster.local:7878
@@ -9,10 +19,13 @@ radarr:
 
     quality_profiles:
       - trash_id: 90a3370d2d30cbaf08d9c23b856a12c8  # [SQP] SQP-1 WEB (1080p)
+        name: "Trash Movie 1080p"
         reset_unmatched_scores:
           enabled: true
-        # Pure WEB-DL/WEBRip 1080p — drop the Bluray-1080p fallback the SQP
-        # template allows, so only WEB is ever grabbed (matches Sonarr).
+        # DEVIATION 1: TRaSH ships Bluray-1080p and WEB-1080p as ONE equal-ranked
+        # tier ("Bluray|WEB-1080p"), where custom format score alone picks the
+        # winner. Split it so WEB wins whenever it exists and Bluray is a genuine
+        # fallback. Everything else — including minFormatScore 1000 — is default.
         upgrade:
           allowed: true
           until_quality: WEB 1080p
@@ -22,20 +35,11 @@ radarr:
             qualities:
               - WEBDL-1080p
               - WEBRip-1080p
+          - name: Bluray-1080p
 
     custom_format_groups:
       add:
         - trash_id: 15b1cf0b6f1a1493856a4355907affee  # [Unwanted] Unwanted Formats SQP
-
-    custom_formats:
-      # Allow x265 at 1080p: the SQP profile scores "x265 (HD)" at -10000, and
-      # with minScore=1000 that hard-rejects every x265 release. Neutralise it
-      # to 0 so x265 competes on equal footing with x264 (smaller files).
-      - trash_ids:
-          - dc98083864ea246d05a42df0d05f81cc  # x265 (HD)
-        assign_scores_to:
-          - name: "[SQP] SQP-1 WEB (1080p)"
-            score: 0
 
 sonarr:
   sonarr-main:
@@ -52,17 +56,12 @@ sonarr:
     quality_profiles:
       # --- general TV ---
       - trash_id: 72dae194fc92bf828f32cde7744e51a1  # WEB-1080p
+        name: "Trash TV 1080p"
         reset_unmatched_scores:
           enabled: true
-      # --- anime ---
-      # TRaSH's stock anime profile is "[Anime] Remux-1080p" — built for ~7GB/ep
-      # near-lossless files. We keep its scoring (fansub group tiers, streaming
-      # services, version tags) but restrict the qualities to WEB 1080p only:
-      # no Remux, no Bluray, no 720p. Everything else is left at guide defaults.
-      - trash_id: 20e0fc959f1f1704bed501f23bdae76f  # [Anime] Remux-1080p template
-        name: "[Anime] WEB-1080p"
-        reset_unmatched_scores:
-          enabled: true
+        # DEVIATION 1: the guide profile is WEB-only. Enable Bluray-1080p BELOW
+        # WEB 1080p as a fallback for shows whose WEB releases are unavailable
+        # (Lower Decks S05: 88 of 88 WEB grabs died on missing articles).
         upgrade:
           allowed: true
           until_quality: WEB 1080p
@@ -72,33 +71,59 @@ sonarr:
             qualities:
               - WEBDL-1080p
               - WEBRip-1080p
+          - name: Bluray-1080p
+
+      # --- anime ---
+      - trash_id: 20e0fc959f1f1704bed501f23bdae76f  # [Anime] Remux-1080p
+        name: "Trash Anime 1080p"
+        reset_unmatched_scores:
+          enabled: true
+        # DEVIATION 1 + 2: TRaSH ranks its "Bluray 1080p" tier ABOVE WEB 1080p,
+        # and that tier bundles Bluray-1080p Remux with the Bluray-1080p encode.
+        # Split the bundle: WEB 1080p first, then the encode alone. Remux is the
+        # only quality dropped outright — 720p/480p/DVD/SDTV stay enabled at
+        # their default ranks so there is always a smaller fallback.
+        upgrade:
+          allowed: true
+          until_quality: WEB 1080p
+          until_score: 10000
+        qualities:
+          - name: WEB 1080p
+            qualities:
               - HDTV-1080p
+              - WEBRip-1080p
+              - WEBDL-1080p
+          - name: Bluray-1080p
+          - name: Bluray-720p
+          - name: WEB 720p
+            qualities:
+              - HDTV-720p
+              - WEBRip-720p
+              - WEBDL-720p
+          - name: Bluray-480p
+          - name: WEB 480p
+            qualities:
+              - WEBRip-480p
+              - WEBDL-480p
+          - name: DVD
+          - name: SDTV
 
     custom_format_groups:
       add:
-        # --- general TV (scores into WEB-1080p) ---
+        # --- general TV ---
         - trash_id: 85fae4a2294965b75710ef2989c850eb  # [Streaming Services] HD/UHD boost
         - trash_id: 59c3af66780d08332fdc64e68297098f  # [Unwanted] Unwanted Formats
-          select:
-            - 6f808933a71bd9666531610cb8c059cc  # BR-DISK (BTN) — non-default opt-in
-        # --- anime (scores into [Anime] WEB-1080p) ---
+        # --- anime ---
         - trash_id: 4b196eed652c65ea98d615212040ebe2  # [Required] Anime Versions (prefer v2/v3)
         - trash_id: f206572b1147d0221bb1c96765b349e8  # [Release Groups] Anime (tier fansub groups)
         - trash_id: f54985e5e96747cef58731f1cf4c9181  # [Streaming Services] Anime
 
     custom_formats:
-      # Allow x265 at 1080p on regular TV — same rationale as Radarr above.
-      # (The anime profile doesn't reject x265; anime is commonly x265.)
-      - trash_ids:
-          - 47435ece6b99a0b477caf360e79ba0bb  # x265 (HD)
-        assign_scores_to:
-          - name: WEB-1080p
-            score: 0
-      # Dub-watcher: TRaSH scores "Dubs Only" at -10000, which rejects English-
-      # dub-only releases — exactly what we want to keep. Neutralise it to 0 so
-      # dubbed releases grab. (VOSTFR stays at -10000: that's French subs.)
+      # DEVIATION 3: TRaSH scores "Dubs Only" -10000, which rejects English-dub-
+      # only releases — exactly what we want to keep. Neutralise it to 0 so dubbed
+      # releases grab. (VOSTFR stays at -10000: that's French subs, not dubs.)
       - trash_ids:
           - 9c14d194486c4014d422adc64092d794  # Dubs Only
         assign_scores_to:
-          - name: "[Anime] WEB-1080p"
+          - name: "Trash Anime 1080p"
             score: 0
