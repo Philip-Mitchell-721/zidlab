@@ -43,12 +43,10 @@ sonarr:
     api_key: !env_var SONARR_API_KEY
 
     quality_definition:
-      # 'anime' sizes, not 'series': anime encodes are far smaller than live-action
-      # (350-900MB vs 1.5GB+ for a 1080p ep). The 'series' floor (Bluray-1080p min
-      # ~1.2GB) rejected nearly every anime encode, so the auto Seerr->Sonarr search
-      # grabbed almost nothing. 'anime' drops the floor so small encodes qualify.
-      # Instance-wide, but it only relaxes the *minimum* — the max ceilings stay
-      # generous, so the few live-action shows on this instance are unaffected.
+      # Instance-wide (recyclarr allows only one). 'anime' rather than 'series'
+      # because anime web encodes are far smaller than live-action (350-900MB vs
+      # 1.5GB+ per 1080p ep) and the 'series' floors reject them. This only
+      # relaxes MINIMUMS, so it never blocks anything the live-action shows want.
       type: anime
 
     quality_profiles:
@@ -56,30 +54,20 @@ sonarr:
       - trash_id: 72dae194fc92bf828f32cde7744e51a1  # WEB-1080p
         reset_unmatched_scores:
           enabled: true
-      # --- anime: WEB-1080p + Bluray-1080p ENCODES, NO Remux (keep files small) ---
-      # Old anime (e.g. FMA, 2009) predates streaming — it has *zero* WEB-1080p
-      # releases, so the small-but-good option is a Bluray-1080p x264/x265 encode
-      # (~1.5-3GB/ep), not WEB. We allow WEB-1080p *and* Bluray-1080p, but exclude
-      # Bluray-1080p Remux (~7GB/ep, ~486GB/series). Reuses the anime trash_id so
-      # the anime CF scoring (fansub group tiers, streaming services) still applies.
-      - trash_id: 20e0fc959f1f1704bed501f23bdae76f  # anime template → anime CF scoring
-        name: "[Anime] 1080p"
+      # --- anime ---
+      # TRaSH's stock anime profile is "[Anime] Remux-1080p" — built for ~7GB/ep
+      # near-lossless files. We keep its scoring (fansub group tiers, streaming
+      # services, version tags) but restrict the qualities to WEB 1080p only:
+      # no Remux, no Bluray, no 720p. Everything else is left at guide defaults.
+      - trash_id: 20e0fc959f1f1704bed501f23bdae76f  # [Anime] Remux-1080p template
+        name: "[Anime] WEB-1080p"
         reset_unmatched_scores:
           enabled: true
-        # Old-anime encodes are usually from groups TRaSH doesn't tier (score 0).
-        # The anime default min of 100 rejects *every* one of them, leaving only
-        # junk (e.g. a 17GB 720p batch from a recognised web-tier group won the
-        # first grab). Drop the gate to 0: the negative CFs (Anime Raws / LQ /
-        # Dubs-only / VOSTFR = -10000) still reject bad releases, while neutral
-        # 1080p encodes grab and win on quality weight.
-        min_format_score: 0
         upgrade:
           allowed: true
-          until_quality: Bluray-1080p   # cutoff = best allowed (encode, never Remux)
+          until_quality: WEB 1080p
           until_score: 10000
-        # 1080p only — no 720p, so a mislabelled multi-GB 720p batch can never win.
         qualities:
-          - name: Bluray-1080p          # x264/x265 encodes (~1.5-3.5GB) — NOT Remux
           - name: WEB 1080p
             qualities:
               - WEBDL-1080p
@@ -93,7 +81,7 @@ sonarr:
         - trash_id: 59c3af66780d08332fdc64e68297098f  # [Unwanted] Unwanted Formats
           select:
             - 6f808933a71bd9666531610cb8c059cc  # BR-DISK (BTN) — non-default opt-in
-        # --- anime (scores into [Anime] 1080p) ---
+        # --- anime (scores into [Anime] WEB-1080p) ---
         - trash_id: 4b196eed652c65ea98d615212040ebe2  # [Required] Anime Versions (prefer v2/v3)
         - trash_id: f206572b1147d0221bb1c96765b349e8  # [Release Groups] Anime (tier fansub groups)
         - trash_id: f54985e5e96747cef58731f1cf4c9181  # [Streaming Services] Anime
@@ -112,5 +100,5 @@ sonarr:
       - trash_ids:
           - 9c14d194486c4014d422adc64092d794  # Dubs Only
         assign_scores_to:
-          - name: "[Anime] 1080p"
+          - name: "[Anime] WEB-1080p"
             score: 0
