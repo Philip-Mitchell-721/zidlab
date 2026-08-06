@@ -1,11 +1,16 @@
 # yaml-language-server: $schema=https://schemas.recyclarr.dev/v8/config-schema.json
 #
-# TRaSH guide defaults, with exactly ONE deviation:
+# TRaSH guide defaults, with exactly TWO deviations:
 #
-#   - the anime profile scores "Dubs Only" 0 instead of -10000, because we watch
-#     English dubs and the guide's -10000 rejects dub-only releases outright.
+#   1. No Blu-ray, anywhere. The TV template is WEB-only out of the box, but the
+#      movie and anime templates both allow Blu-ray (see the notes on each
+#      profile below), so their quality ladders are overridden. The overrides
+#      subtract the Blu-ray tiers and NOTHING else — every other quality the
+#      template allows stays allowed, in the template's own order.
+#   2. The anime profile scores "Dubs Only" 0 instead of -10000, because we watch
+#      English dubs and the guide's -10000 rejects dub-only releases outright.
 #
-# No quality ladder, cutoff, or format score is overridden anywhere else. Verify
+# No format score, min score, or cutoff score is overridden anywhere else. Verify
 # with: recyclarr sync --preview, or the CF audit in docs/arr-stack-troubleshooting.md.
 #
 # Two things the guides cannot decide for a single-instance setup:
@@ -29,10 +34,25 @@ radarr:
       type: sqp-streaming  # guide default for the SQP-1 WEB profile
 
     quality_profiles:
+      # Despite the "WEB" in its name, the SQP-1 WEB template's top tier is a
+      # group literally called "Bluray|WEB-1080p" — Bluray-1080p sits alongside
+      # WEBDL/WEBRip and is the cutoff. Deviation 1 drops it, so only WEB is
+      # ever grabbed. Scores are untouched (min 1000, cutoff 10000).
       - trash_id: 90a3370d2d30cbaf08d9c23b856a12c8  # [SQP] SQP-1 WEB (1080p)
         name: "Trash Movie 1080p"
         reset_unmatched_scores:
           enabled: true
+        upgrade:
+          allowed: true
+          until_quality: WEB 1080p
+          until_score: 10000
+        qualities:
+          # The template's top group minus Bluray-1080p. It was the only tier
+          # the template allowed, so there is nothing else to carry over.
+          - name: WEB 1080p
+            qualities:
+              - WEBRip-1080p
+              - WEBDL-1080p
 
     custom_format_groups:
       add:
@@ -48,19 +68,47 @@ sonarr:
 
     quality_profiles:
       # --- general TV ---
+      # Already WEB-only in the template — no quality override needed.
       - trash_id: 72dae194fc92bf828f32cde7744e51a1  # WEB-1080p
         name: "Trash TV 1080p"
         reset_unmatched_scores:
           enabled: true
 
       # --- anime ---
-      # Stock "[Anime] Remux-1080p": Bluray 1080p (Remux + encode) is the TOP
-      # tier and the cutoff, so this profile prefers ~7GB/ep Remux and will
-      # upgrade existing WEB files up to it. That is the guide's intent.
+      # Stock "[Anime] Remux-1080p" makes Bluray 1080p (Remux + encode) the top
+      # tier AND the cutoff, so it prefers ~7GB/ep Remux and would upgrade
+      # existing WEB files up to it. Deviation 1 removes the four Blu-ray tiers
+      # (Bluray-1080p Remux, Bluray-1080p, Bluray-720p, Bluray-480p) and leaves
+      # the rest of the template's ladder untouched — WEB 1080p/720p/480p, DVD
+      # and SDTV all stay allowed as fallbacks, in the template's order. WEB
+      # 1080p inherits the cutoff because the old one is gone. Scores are
+      # untouched (min 100, cutoff 10000), so the fansub group tiers, streaming
+      # service tags and v2/v3 version preferences all still apply.
       - trash_id: 20e0fc959f1f1704bed501f23bdae76f  # [Anime] Remux-1080p
         name: "Trash Anime 1080p"
         reset_unmatched_scores:
           enabled: true
+        upgrade:
+          allowed: true
+          until_quality: WEB 1080p
+          until_score: 10000
+        qualities:
+          - name: WEB 1080p
+            qualities:
+              - HDTV-1080p
+              - WEBRip-1080p
+              - WEBDL-1080p
+          - name: WEB 720p
+            qualities:
+              - HDTV-720p
+              - WEBRip-720p
+              - WEBDL-720p
+          - name: WEB 480p
+            qualities:
+              - WEBRip-480p
+              - WEBDL-480p
+          - name: DVD
+          - name: SDTV
 
     custom_format_groups:
       add:
@@ -73,7 +121,7 @@ sonarr:
         - trash_id: f54985e5e96747cef58731f1cf4c9181  # [Streaming Services] Anime
 
     custom_formats:
-      # THE ONE DEVIATION. TRaSH scores "Dubs Only" -10000, which rejects
+      # DEVIATION 2. TRaSH scores "Dubs Only" -10000, which rejects
       # English-dub-only releases — exactly what we want to keep. Neutralise it
       # to 0. (VOSTFR stays at -10000: that's French subs, not dubs.)
       - trash_ids:
