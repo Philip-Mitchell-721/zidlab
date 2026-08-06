@@ -32,9 +32,14 @@ spec:
               requests:
                 cpu: 100m
                 memory: 256Mi
-              # par2 repair + unpack are bursty; give it headroom
+              # par2 repair + unpack are bursty; give it headroom.
+              # SABnzbd sizes its article cache (cache_limit=1G) from the NODE's
+              # RAM — it can't see the cgroup limit — so peak = 1G cache + unrar
+              # (a child process in the same cgroup) + assembler buffers. 2Gi was
+              # OOMKilled (exit 137) mid-unpack on 2026-08-05 when Sonarr fired
+              # ~43 grabs at once. 4Gi is a runaway-catcher, not a working ceiling.
               limits:
-                memory: 2Gi
+                memory: 4Gi
     service:
       app:
         ports:
