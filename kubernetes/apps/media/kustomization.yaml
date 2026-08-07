@@ -11,6 +11,7 @@ resources:
   - ./audiobookshelf/ks.yaml
   - ./bazarr/ks.yaml
   - ./bindery/ks.yaml
+  - ./isponsorblocktv/ks.yaml
   - ./jellyplex-watched/ks.yaml
   - ./media-share/ks.yaml
   - ./prowlarr/ks.yaml

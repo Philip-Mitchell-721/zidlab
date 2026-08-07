@@ -1,0 +1,76 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: isponsorblocktv
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: isponsorblocktv
+  interval: 1h
+  values:
+    controllers:
+      isponsorblocktv:
+        annotations:
+          # config.json is read once at startup and never re-read, and subPath
+          # mounts don't hot-reload anyway — bounce the pod when the secret changes
+          reloader.stakater.com/auto: "true"
+        # a screen can only hold one lounge session; never run two copies at once
+        strategy: Recreate
+        containers:
+          app:
+            image:
+              repository: ghcr.io/dmunozv04/isponsorblocktv
+              tag: v2.10.0
+            env:
+              TZ: America/New_York
+            # No probes: this listens on nothing. It's an outbound-only client of
+            # YouTube's lounge API, so there is no socket or health path to poll.
+            # If the config is bad the process exits and the kubelet restarts it,
+            # which is the only failure signal there is.
+            probes:
+              liveness:
+                enabled: false
+              readiness:
+                enabled: false
+            # An idle asyncio loop holding one websocket. It only does work while
+            # something is actually playing on the Apple TV.
+            resources:
+              requests:
+                cpu: 10m
+                memory: 64Mi
+              limits:
+                memory: 256Mi
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop: ["ALL"]
+              seccompProfile:
+                type: RuntimeDefault
+    defaultPodOptions:
+      securityContext:
+        # the image declares no USER, so it would otherwise run as root for no
+        # reason. Nothing here writes: the only volume is a read-only secret
+        # (mode 0644), so this needs no fsGroup the way the *arr volumes do.
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+    # No Service and no HTTPRoute, on purpose. iSponsorBlockTV never accepts a
+    # connection — it dials out to youtube.com/api/lounge and YouTube relays the
+    # commands down to the Apple TV. That's also why this pod does NOT need to
+    # share a network with the TV: only the optional SSDP autodiscovery does,
+    # and we skip that by pairing with a TV code instead.
+    persistence:
+      # The whole config, including the screen_id (a pairing credential — anyone
+      # holding it can drive YouTube on the TV), lives in one SOPS secret. The
+      # app only ever opens this read-only: Config.save() is reachable from the
+      # setup wizard alone, and the short-lived lounge token is re-derived from
+      # the screen_id in memory on each run. So there is nothing to persist and
+      # no PVC to back up.
+      config:
+        type: secret
+        name: isponsorblocktv-secret
+        globalMounts:
+          - path: /app/data/config.json
+            subPath: config.json
+            readOnly: true
