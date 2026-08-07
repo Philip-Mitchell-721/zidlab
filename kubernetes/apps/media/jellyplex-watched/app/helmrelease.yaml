@@ -31,8 +31,19 @@ spec:
 
               # ---- safety ----
               # DRYRUN logs what it *would* mark without writing to either
-              # server. Leave True until a run's log looks right, then flip it.
-              DRYRUN: "True"
+              # server. Flipped False 2026-08-07 after the first run's log
+              # checked out: 162 changes, both directions, no errors, and both
+              # library-name mismatches self-resolving (Shows<->TV Shows).
+              #
+              # The 120 changes headed INTO Plex were verified against the
+              # Jellyfin API before enabling this — 107 played items spread over
+              # 38 distinct days (2026-04-20 to 06-30), none missing a
+              # LastPlayedDate. That's real viewing history from when Jellyfin
+              # was in use, not a bulk-mark artifact, so back-filling it into
+              # Plex is wanted. Worth re-checking if that ratio ever looks odd
+              # again, because this tool only ever ADDS watch state — it never
+              # un-watches, so a bad write can't be undone from here.
+              DRYRUN: "False"
 
               # one pass then exit — the CronJob schedule drives cadence, so we
               # don't want the image's built-in SLEEP_DURATION polling loop
