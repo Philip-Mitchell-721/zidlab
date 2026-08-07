@@ -1,0 +1,99 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: jellyplex-watched
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: jellyplex-watched
+  interval: 1h
+  values:
+    controllers:
+      jellyplex-watched:
+        type: cronjob
+        cronjob:
+          # every 6h — Jellyfin is a cold standby for when Plex auth/internet
+          # is down, so it only has to be "recent", not live. Bump the cadence
+          # if you start using Jellyfin as a daily driver.
+          schedule: "0 */6 * * *"
+          timeZone: America/New_York
+          concurrencyPolicy: Forbid
+          successfulJobsHistory: 1
+          failedJobsHistory: 1
+        containers:
+          app:
+            image:
+              repository: docker.io/luigi311/jellyplex-watched
+              tag: 8.5.3
+            env:
+              TZ: America/New_York
+
+              # ---- safety ----
+              # DRYRUN logs what it *would* mark without writing to either
+              # server. Leave True until a run's log looks right, then flip it.
+              DRYRUN: "True"
+
+              # one pass then exit — the CronJob schedule drives cadence, so we
+              # don't want the image's built-in SLEEP_DURATION polling loop
+              RUN_ONLY_ONCE: "True"
+              DEBUG_LEVEL: INFO
+              # emptyDir-backed; the real record is `kubectl logs` on the job pod
+              LOG_FILE: /tmp/log.log
+              MARK_FILE: /tmp/mark.log
+              MAX_THREADS: "1"
+
+              # ---- servers (both live on the Plex node, .27) ----
+              # reached over the LAN via Cilium egress SNAT, same as the
+              # Homepage Plex + AdGuard widgets
+              PLEX_BASEURL: http://192.168.0.27:32400
+              JELLYFIN_BASEURL: http://192.168.0.27:8096
+
+              # ---- matching ----
+              # Both servers index the same physical files, just under
+              # different container mounts (/media vs /mnt/media). That's fine:
+              # the tool compares basenames only, so the prefixes never meet.
+              # GUIDs stay on as a second signal for files one server failed to
+              # identify — accuracy matters more than speed on a 6-hourly job.
+              GENERATE_GUIDS: "True"
+              GENERATE_LOCATIONS: "True"
+
+              # Plex matches on username (philipmitchell883), NOT the display
+              # title ("Philip Mitchell"); Jellyfin matches on its login name.
+              # Both sides are lowercased before comparison.
+              USER_MAPPING: '{"philipmitchell883": "pmitchell"}'
+
+              # Plex calls it "TV Shows", Jellyfin calls it "Shows". Unlike
+              # USER_MAPPING this is case-SENSITIVE — it is not lowercased.
+              LIBRARY_MAPPING: '{"TV Shows": "Shows"}'
+
+              # scope to Phil only for now; other accounts (jeremy, meghan,
+              # SailorB, Tricia) need their own mappings before they'd sync
+              WHITELIST_USERS: philipmitchell883,pmitchell
+
+              # Music is Plex-only, Collections is a Jellyfin boxset folder —
+              # neither has a counterpart, and neither has meaningful watch state
+              BLACKLIST_LIBRARY: Music,Collections
+
+              # ---- direction ----
+              # Plex -> Jellyfin keeps the standby current.
+              # Jellyfin -> Plex back-fills whatever you watched during an
+              # outage once Plex is reachable again.
+              SYNC_FROM_PLEX_TO_JELLYFIN: "True"
+              SYNC_FROM_JELLYFIN_TO_PLEX: "True"
+            envFrom:
+              - secretRef:
+                  name: jellyplex-watched-secret
+            resources:
+              requests:
+                cpu: 50m
+                memory: 256Mi
+              limits:
+                memory: 1Gi
+    persistence:
+      # scratch only — the tool is stateless between runs, it re-reads live
+      # state from both servers each time. No PVC needed.
+      tmp:
+        type: emptyDir
+        globalMounts:
+          - path: /tmp
