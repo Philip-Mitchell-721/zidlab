@@ -12,7 +12,6 @@ resources:
   - ./bazarr/ks.yaml
   - ./bindery/ks.yaml
   - ./isponsorblocktv/ks.yaml
-  - ./jellyplex-watched/ks.yaml
   - ./media-share/ks.yaml
   - ./prowlarr/ks.yaml
   - ./radarr/ks.yaml
@@ -21,4 +20,3 @@ resources:
   - ./seerr/ks.yaml
   - ./sonarr/ks.yaml
   - ./tautulli/ks.yaml
-  - ./tubesync/ks.yaml
