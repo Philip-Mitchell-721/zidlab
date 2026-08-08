@@ -1,0 +1,12 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tubesync-config
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: longhorn
+  # SQLite DB + one thumbnail per video — scales with video count, not video size
+  resources:
+    requests:
+      storage: 10Gi
