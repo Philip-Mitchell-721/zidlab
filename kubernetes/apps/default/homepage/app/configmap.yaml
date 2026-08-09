@@ -78,6 +78,12 @@ data:
               # reached over the LAN via Cilium egress SNAT (same as AdGuard .27)
               url: http://192.168.0.27:32400
               key: "{{HOMEPAGE_VAR_PLEX_TOKEN}}"
+        - Jellyfin:
+            icon: jellyfin.png
+            # lives on the Plex node, not the cluster — jellyfin.<domain> is NXDOMAIN
+            href: http://192.168.0.27:8096
+            description: Media server (standby)
+            # widget needs a Jellyfin API key -> HOMEPAGE_VAR_JELLYFIN_KEY; link-only for now
         - Tautulli:
             icon: tautulli.png
             href: https://tautulli.${SECRET_DOMAIN}
@@ -150,6 +156,16 @@ data:
             icon: mdi-bookshelf-#10b981
             href: https://bindery.${SECRET_DOMAIN}
             description: Books & audiobooks
+        - Sportarr:
+            # no sportarr.png in dashboard-icons — MDI glyph, scoped to UFC
+            icon: mdi-boxing-glove-#e11d48
+            href: https://sportarr.${SECRET_DOMAIN}
+            description: Sports PVR (UFC)
+        - Wizarr:
+            icon: wizarr.png
+            href: https://wizarr.${SECRET_DOMAIN}
+            description: Plex invitations
+            # No Homepage widget type exists for Wizarr — link only.
 
     - Home:
         - Immich:
@@ -226,3 +242,9 @@ data:
             icon: authentik.png
             href: https://auth.${SECRET_DOMAIN}
             description: SSO / identity
+        - Apprise:
+            icon: apprise.png
+            href: https://apprise.${SECRET_DOMAIN}
+            description: Notification fan-out
+            # LAN-only by design; the tile is a link to its config UI. No widget
+            # type exists, and Alertmanager bypasses Apprise entirely (ntfy bridge).
