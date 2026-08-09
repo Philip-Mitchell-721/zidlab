@@ -156,6 +156,11 @@ data:
             icon: mdi-bookshelf-#10b981
             href: https://bindery.${SECRET_DOMAIN}
             description: Books & audiobooks
+        - Sportarr:
+            # no sportarr.png in dashboard-icons — MDI glyph, scoped to UFC
+            icon: mdi-boxing-glove-#e11d48
+            href: https://sportarr.${SECRET_DOMAIN}
+            description: Sports PVR (UFC)
         - Wizarr:
             icon: wizarr.png
             href: https://wizarr.${SECRET_DOMAIN}
