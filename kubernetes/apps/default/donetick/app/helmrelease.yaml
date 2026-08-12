@@ -1,0 +1,75 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: donetick
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: donetick
+  interval: 1h
+  values:
+    controllers:
+      donetick:
+        # single writer to the RWO SQLite volume
+        strategy: Recreate
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          app:
+            image:
+              repository: docker.io/donetick/donetick
+              tag: v0.1.76
+            env:
+              TZ: America/New_York
+              # loads /config/selfhosted.yaml from the image; any key in it is
+              # overridable as DT_<SECTION>_<KEY> (viper AutomaticEnv)
+              DT_ENV: selfhosted
+              DT_SQLITE_PATH: /donetick-data/donetick.db
+              DT_OAUTH2_NAME: Authentik
+              # authentik's global oauth endpoints — not slug-scoped
+              DT_OAUTH2_AUTH_URL: https://auth.${SECRET_DOMAIN}/application/o/authorize/
+              DT_OAUTH2_TOKEN_URL: https://auth.${SECRET_DOMAIN}/application/o/token/
+              DT_OAUTH2_USER_INFO_URL: https://auth.${SECRET_DOMAIN}/application/o/userinfo/
+              DT_OAUTH2_REDIRECT_URL: https://donetick.${SECRET_DOMAIN}/auth/oauth2
+              # no fallback in identity_provider.go — an empty scope list fails login
+              DT_OAUTH2_SCOPES: openid,profile,email
+            envFrom:
+              # DT_JWT_SECRET — the shipped config file has a placeholder, so this
+              # override is mandatory, not optional
+              - secretRef:
+                  name: donetick-secret
+            probes:
+              liveness:
+                enabled: true
+              readiness:
+                enabled: true
+            resources:
+              requests:
+                cpu: 10m
+                memory: 64Mi
+              limits:
+                memory: 512Mi
+    service:
+      app:
+        ports:
+          http:
+            port: &port 2021
+    persistence:
+      data:
+        existingClaim: donetick-data
+        globalMounts:
+          - path: /donetick-data
+    route:
+      app:
+        # LAN-only for now: signup is open so the first accounts can be made.
+        # Flip to envoy-external only together with OIDC + closed signup.
+        hostnames: ["donetick.${SECRET_DOMAIN}"]
+        parentRefs:
+          - name: envoy-internal
+            namespace: network
+            sectionName: https
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: *port

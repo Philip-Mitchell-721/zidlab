@@ -1,0 +1,157 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: karakeep
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: karakeep
+  interval: 1h
+  values:
+    controllers:
+      # --- Web UI + API + the crawl/index workers ---
+      karakeep:
+        # single writer to the RWO /data volume (SQLite + archived assets)
+        strategy: Recreate
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          app:
+            image:
+              repository: ghcr.io/karakeep-app/karakeep
+              tag: 0.33.1
+            env:
+              TZ: America/New_York
+              DATA_DIR: /data
+              # used to build auth callback URLs — same hostname LAN or public,
+              # so this survives the envoy-external flip
+              NEXTAUTH_URL: https://karakeep.${SECRET_DOMAIN}
+              MEILI_ADDR: http://karakeep-meilisearch:7700
+              BROWSER_WEB_URL: http://karakeep-chrome:9222
+              DISABLE_NEW_RELEASE_CHECK: "true"
+              # also gates OIDC provisioning, so every user has to log in once
+              # before this flips to "true"
+              DISABLE_SIGNUPS: "false"
+              OAUTH_PROVIDER_NAME: Authentik
+              # slug-scoped, unlike donetick's endpoints
+              OAUTH_WELLKNOWN_URL: https://auth.${SECRET_DOMAIN}/application/o/karakeep/.well-known/openid-configuration
+            envFrom:
+              - secretRef:
+                  name: karakeep-secret
+            probes:
+              liveness:
+                enabled: true
+                spec:
+                  # s6 runs DB migrations before the server binds 3000; the default
+                  # 0s delay would restart-loop a slow first boot
+                  initialDelaySeconds: 60
+              readiness:
+                enabled: true
+            resources:
+              requests:
+                cpu: 100m
+                memory: 512Mi
+              limits:
+                memory: 2Gi
+      # --- Headless Chrome the crawler drives over the devtools port. Stateless;
+      # it is also the RAM hog of the three. ---
+      chrome:
+        containers:
+          app:
+            image:
+              repository: gcr.io/zenika-hub/alpine-chrome
+              tag: "124"
+            # image entrypoint is `chromium-browser --headless`; these are upstream's
+            # compose flags, incl. in-memory /dev/shm which containers cap at 64Mi
+            args:
+              - --no-sandbox
+              - --disable-gpu
+              - --disable-dev-shm-usage
+              - --remote-debugging-address=0.0.0.0
+              - --remote-debugging-port=9222
+              - --hide-scrollbars
+              - --disable-blink-features=AutomationControlled
+              - --window-size=1440,900
+            probes:
+              liveness:
+                enabled: true
+              readiness:
+                enabled: true
+            resources:
+              requests:
+                cpu: 50m
+                memory: 256Mi
+              limits:
+                memory: 1Gi
+      # --- Meilisearch: full-text index. Rebuildable from the DB, so the volume is
+      # replaceable — but it must not run two writers either. ---
+      meilisearch:
+        strategy: Recreate
+        containers:
+          app:
+            image:
+              repository: docker.io/getmeili/meilisearch
+              tag: v1.41.0
+            env:
+              TZ: America/New_York
+              MEILI_NO_ANALYTICS: "true"
+            envFrom:
+              # shares the secret with the web container — MEILI_MASTER_KEY has to
+              # match on both ends or every search 403s
+              - secretRef:
+                  name: karakeep-secret
+            probes:
+              liveness:
+                enabled: true
+              readiness:
+                enabled: true
+            resources:
+              requests:
+                cpu: 50m
+                memory: 256Mi
+              limits:
+                memory: 1Gi
+    service:
+      # keys become `karakeep-app` / `karakeep-chrome` / `karakeep-meilisearch`
+      # — the last two are the DNS names the web container is pointed at above
+      app:
+        controller: karakeep
+        ports:
+          http:
+            port: &port 3000
+      chrome:
+        controller: chrome
+        ports:
+          http:
+            port: 9222
+      meilisearch:
+        controller: meilisearch
+        ports:
+          http:
+            port: 7700
+    persistence:
+      data:
+        existingClaim: karakeep-data
+        advancedMounts:
+          karakeep:
+            app:
+              - path: /data
+      meilisearch:
+        existingClaim: karakeep-meilisearch
+        advancedMounts:
+          meilisearch:
+            app:
+              - path: /meili_data
+    route:
+      app:
+        # LAN-only until OIDC is the only login — signup is still open below.
+        hostnames: ["karakeep.${SECRET_DOMAIN}"]
+        parentRefs:
+          - name: envoy-internal
+            namespace: network
+            sectionName: https
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: *port

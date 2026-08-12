@@ -11,9 +11,11 @@ resources:
   - ./actual/ks.yaml
   - ./echo/ks.yaml
   - ./apprise/ks.yaml
+  - ./donetick/ks.yaml
   - ./homelogger/ks.yaml
   - ./homepage/ks.yaml
   - ./immich/ks.yaml
+  - ./karakeep/ks.yaml
   - ./kimai/ks.yaml
   - ./lubelogger/ks.yaml
   - ./mealie/ks.yaml

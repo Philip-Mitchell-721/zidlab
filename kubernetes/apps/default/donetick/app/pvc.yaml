@@ -1,0 +1,12 @@
+---
+# The SQLite DB — small and precious, single writer.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: donetick-data
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 2Gi
