@@ -30,9 +30,13 @@ spec:
               MEILI_ADDR: http://karakeep-meilisearch:7700
               BROWSER_WEB_URL: http://karakeep-chrome:9222
               DISABLE_NEW_RELEASE_CHECK: "true"
-              # also gates OIDC provisioning, so every user has to log in once
-              # before this flips to "true"
-              DISABLE_SIGNUPS: "false"
+              # blocks OIDC provisioning too, and there is no admin create-user
+              # path — adding a person means flipping this to "false", having
+              # them log in, and flipping it back
+              DISABLE_SIGNUPS: "true"
+              DISABLE_PASSWORD_AUTH: "true"
+              # only honoured once password auth is off
+              OAUTH_AUTO_REDIRECT: "true"
               OAUTH_PROVIDER_NAME: Authentik
               # slug-scoped, unlike donetick's endpoints
               OAUTH_WELLKNOWN_URL: https://auth.${SECRET_DOMAIN}/application/o/karakeep/.well-known/openid-configuration
@@ -145,7 +149,7 @@ spec:
               - path: /meili_data
     route:
       app:
-        # LAN-only until OIDC is the only login — signup is still open below.
+        # safe to expose now that OIDC is the only login; LAN-only by choice
         hostnames: ["karakeep.${SECRET_DOMAIN}"]
         parentRefs:
           - name: envoy-internal

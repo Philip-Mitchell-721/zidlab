@@ -34,6 +34,11 @@ spec:
               DT_OAUTH2_REDIRECT_URL: https://donetick.${SECRET_DOMAIN}/auth/oauth2
               # no fallback in identity_provider.go — an empty scope list fails login
               DT_OAUTH2_SCOPES: openid,profile,email
+              # 403 middleware on signup/login/reset, not just a UI hint
+              DT_DISABLE_PASSWORD_AUTH: "true"
+              # closes the signup form only — OIDC still provisions, so the
+              # authentik group binding is what gates new accounts
+              DT_IS_USER_CREATION_DISABLED: "true"
             envFrom:
               # DT_JWT_SECRET — the shipped config file has a placeholder, so this
               # override is mandatory, not optional
@@ -62,8 +67,7 @@ spec:
           - path: /donetick-data
     route:
       app:
-        # LAN-only for now: signup is open so the first accounts can be made.
-        # Flip to envoy-external only together with OIDC + closed signup.
+        # safe to expose now that OIDC is the only login; LAN-only by choice
         hostnames: ["donetick.${SECRET_DOMAIN}"]
         parentRefs:
           - name: envoy-internal
