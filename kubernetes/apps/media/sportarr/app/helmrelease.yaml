@@ -16,7 +16,7 @@ spec:
           app:
             image:
               repository: docker.io/sportarr/sportarr
-              tag: 4.1.0.1110
+              tag: 4.1.2.1112
             env:
               PUID: 1000
               PGID: 1000
