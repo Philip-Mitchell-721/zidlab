@@ -70,6 +70,12 @@ spec:
           - path: /app/config/kubernetes.yaml
             subPath: kubernetes.yaml
             readOnly: true
+          - path: /app/config/custom.css
+            subPath: custom.css
+            readOnly: true
+          - path: /app/config/custom.js
+            subPath: custom.js
+            readOnly: true
       logs:
         type: emptyDir
         globalMounts:

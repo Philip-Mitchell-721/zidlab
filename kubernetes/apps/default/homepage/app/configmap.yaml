@@ -52,11 +52,38 @@ data:
     - search:
         provider: google
         target: _blank
+    # YouTube isn't a built-in provider, and the multi-provider dropdown
+    # excludes `custom` — so it has to be its own second search box
+    - search:
+        provider: custom
+        url: https://www.youtube.com/results?search_query=
+        target: _blank
     - datetime:
         text_size: xl
         format:
           timeStyle: short
           dateStyle: long
+
+  custom.js: |
+    // Forces the search box back to Google — Homepage seeds it from a prerendered
+    // duckduckgo fallback and never re-syncs. Display name, not config key; the
+    // YouTube box ignores it (google isn't in its provider list).
+    // Why: docs/setup/homepage-search-provider-bug.md
+    localStorage.setItem("search-name", "Google");
+
+  custom.css: |
+    /* Search + clock live in Homepage's right-aligned widget group, which by
+       default shares the header row with the k8s/Longhorn widgets on wide
+       screens. Full-width basis forces it onto its own row at every size. */
+    #information-widgets-right {
+      flex-basis: 100%;
+    }
+
+    /* Both boxes render the same "Search…" placeholder, so tint the second
+       one (YouTube) — the tiny button glyphs alone aren't distinguishable. */
+    #information-widgets-right form.information-widget-search:nth-of-type(2) button {
+      background-color: rgb(255 0 0 / 0.5);
+    }
 
   bookmarks.yaml: |
     - Homelab:
