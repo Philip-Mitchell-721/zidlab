@@ -149,10 +149,11 @@ spec:
               - path: /meili_data
     route:
       app:
-        # safe to expose now that OIDC is the only login; LAN-only by choice
+        # Public via the Cloudflare tunnel; external-dns publishes karakeep.<domain>.
+        # Safe to expose because OIDC is the only login (password auth disabled above).
         hostnames: ["karakeep.${SECRET_DOMAIN}"]
         parentRefs:
-          - name: envoy-internal
+          - name: envoy-external
             namespace: network
             sectionName: https
         rules:
