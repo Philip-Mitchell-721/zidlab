@@ -204,6 +204,17 @@ data:
             icon: mdi-home-heart
             href: https://homelogger.${SECRET_DOMAIN}
             description: Home maintenance
+        - Donetick:
+            icon: donetick.png
+            href: https://donetick.${SECRET_DOMAIN}
+            description: Chores & tasks
+            # No Homepage widget exists for Donetick — link only.
+        - Karakeep:
+            icon: karakeep.png
+            href: https://karakeep.${SECRET_DOMAIN}
+            description: Bookmarks
+            # widget exists but needs an API key from Settings -> API Keys
+            # -> HOMEPAGE_VAR_KARAKEEP_KEY; link-only for now
         - Rallly:
             icon: rallly.png
             href: https://rallly.${SECRET_DOMAIN}
