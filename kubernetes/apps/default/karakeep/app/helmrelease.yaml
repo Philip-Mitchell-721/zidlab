@@ -64,16 +64,19 @@ spec:
         containers:
           app:
             image:
-              repository: gcr.io/zenika-hub/alpine-chrome
-              tag: "124"
-            # image entrypoint is `chromium-browser --headless`; these are upstream's
-            # compose flags, incl. in-memory /dev/shm which containers cap at 64Mi
+              # upstream retired the zenika image (the :124 tag never existed) — this
+              # is karakeep's own build of chromedp/headless-shell, the only browser
+              # they now test against
+              repository: ghcr.io/karakeep-app/karakeep-chrome
+              tag: 151.0.7922.47-r1
+            # entrypoint run.sh already passes --no-sandbox and
+            # --remote-debugging-address=0.0.0.0, and binds chrome on 9223 with socat
+            # fronting 9222 — passing --remote-debugging-port here would collide with
+            # that listener. what is left is upstream's compose flag list verbatim,
+            # incl. in-memory /dev/shm which containers cap at 64Mi
             args:
-              - --no-sandbox
               - --disable-gpu
               - --disable-dev-shm-usage
-              - --remote-debugging-address=0.0.0.0
-              - --remote-debugging-port=9222
               - --hide-scrollbars
               - --disable-blink-features=AutomationControlled
               - --window-size=1440,900
