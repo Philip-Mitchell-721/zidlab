@@ -30,6 +30,10 @@ spec:
               MEILI_ADDR: http://karakeep-meilisearch:7700
               BROWSER_WEB_URL: http://karakeep-chrome:9222
               DISABLE_NEW_RELEASE_CHECK: "true"
+              # captures the whole page instead of just the 1440x900 viewport. only
+              # applies to newly-crawled bookmarks, and costs ~1-3MB per page vs
+              # ~200KB — the /data PVC is 20Gi with <1MB used, so there is room
+              CRAWLER_FULL_PAGE_SCREENSHOT: "true"
               # blocks OIDC provisioning too, and there is no admin create-user
               # path — adding a person means flipping this to "false", having
               # them log in, and flipping it back
