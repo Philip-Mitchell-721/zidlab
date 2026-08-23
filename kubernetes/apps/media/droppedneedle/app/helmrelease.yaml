@@ -1,0 +1,100 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: droppedneedle
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: droppedneedle
+  interval: 1h
+  values:
+    controllers:
+      droppedneedle:
+        # single writer to the RWO config volume
+        strategy: Recreate
+        containers:
+          app:
+            image:
+              repository: docker.io/droppedneedle/droppedneedle
+              tag: v2.6.0
+            env:
+              PUID: 1000
+              PGID: 1000
+              # entrypoint rejects anything that isn't 3-4 octal digits, so this
+              # must stay quoted; 002 keeps imports writable by the media group
+              UMASK: "002"
+              PORT: &port 8688
+              TZ: America/New_York
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /health
+                    port: *port
+                  periodSeconds: 30
+                  timeoutSeconds: 10
+                  failureThreshold: 5
+              readiness: *probes
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /health
+                    port: *port
+                  periodSeconds: 15
+                  timeoutSeconds: 10
+                  # upstream allows 10m: a version bump migrates the SQLite
+                  # catalog before the app starts serving
+                  failureThreshold: 40
+            resources:
+              requests:
+                cpu: 50m
+                memory: 512Mi
+              # library scans and MusicBrainz identification are the heavy part
+              limits:
+                memory: 2Gi
+    defaultPodOptions:
+      securityContext:
+        # image declares no USER — it starts as root and gosu-drops to 1000, so
+        # runAsUser would break that; fsGroup is what makes the volume writable
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+    service:
+      app:
+        ports:
+          http:
+            port: *port
+    persistence:
+      config:
+        existingClaim: droppedneedle-config
+        globalMounts:
+          - path: /app/config
+            subPath: config
+          - path: /app/cache
+            subPath: cache
+          - path: /app/plugins
+            subPath: plugins
+      # ONE mount of the shared volume: SABnzbd completes to /data/usenet/complete
+      # and the library is /data/Music, so imports are an atomic move. A second
+      # bind of the same share would be a separate rename boundary and fall back
+      # to copy-and-remove.
+      media:
+        existingClaim: media-data
+        globalMounts:
+          - path: /data
+    route:
+      app:
+        # LAN-only for the trial, like the other media UIs
+        hostnames: ["droppedneedle.${SECRET_DOMAIN}"]
+        parentRefs:
+          - name: envoy-internal
+            namespace: network
+            sectionName: https
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: *port
