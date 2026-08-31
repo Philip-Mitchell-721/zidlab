@@ -75,11 +75,10 @@ spec:
               BLACKLIST_LIBRARY: Music,Collections
 
               # ---- direction ----
-              # Plex -> Jellyfin keeps the standby current.
-              # Jellyfin -> Plex back-fills whatever you watched during an
-              # outage once Plex is reachable again.
+              # One-way: Plex is authoritative. The reverse re-pushed Jellyfin's
+              # stale partials into Plex whenever a resume point was cleared.
               SYNC_FROM_PLEX_TO_JELLYFIN: "True"
-              SYNC_FROM_JELLYFIN_TO_PLEX: "True"
+              SYNC_FROM_JELLYFIN_TO_PLEX: "False"
             envFrom:
               - secretRef:
                   name: jellyplex-watched-secret
