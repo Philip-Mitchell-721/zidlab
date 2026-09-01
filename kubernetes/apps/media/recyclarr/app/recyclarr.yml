@@ -13,6 +13,11 @@
 # No format score, min score, or cutoff score is overridden anywhere else. Verify
 # with: recyclarr sync --preview, or the CF audit in docs/arr-stack-troubleshooting.md.
 #
+# 'Audio Description' is a LOCAL custom format (not in the guides — TRaSH has no
+# equivalent). Recyclarr cannot create it, so it lives in Sonarr/Radarr directly
+# and is listed under every reset_unmatched_scores.except, or the sync would zero
+# its -10000 and let AMZN descriptive-audio rips back in.
+#
 # Two things the guides cannot decide for a single-instance setup:
 #
 #   1. quality_definition — the guide prescribes 'series' for the TV profile and
@@ -42,6 +47,8 @@ radarr:
         name: "Trash Movie 1080p"
         reset_unmatched_scores:
           enabled: true
+          except:
+            - Audio Description
         upgrade:
           allowed: true
           until_quality: WEB 1080p
@@ -73,6 +80,8 @@ sonarr:
         name: "Trash TV 1080p"
         reset_unmatched_scores:
           enabled: true
+          except:
+            - Audio Description
 
       # --- anime ---
       # Stock "[Anime] Remux-1080p" makes Bluray 1080p (Remux + encode) the top
@@ -88,6 +97,8 @@ sonarr:
         name: "Trash Anime 1080p"
         reset_unmatched_scores:
           enabled: true
+          except:
+            - Audio Description
         upgrade:
           allowed: true
           until_quality: WEB 1080p
