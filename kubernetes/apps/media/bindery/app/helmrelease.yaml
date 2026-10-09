@@ -17,7 +17,7 @@ spec:
           app:
             image:
               repository: ghcr.io/vavallee/bindery
-              tag: v1.37.0
+              tag: v1.41.0
             env:
               TZ: America/New_York
               # Bindery's distroless image has no shell and no gosu, so it cannot
@@ -34,6 +34,8 @@ spec:
               BINDERY_LIBRARY_DIR: /data/EBooks
               BINDERY_AUDIOBOOK_DIR: "/data/Audio Books"
               BINDERY_DOWNLOAD_DIR: /data/usenet/complete
+              # trust Envoy's X-Forwarded-* so OPDS and OIDC URLs stay https
+              BINDERY_TRUSTED_PROXY: 10.42.0.0/16
               # anonymous usage ping — off for a private homelab
               BINDERY_TELEMETRY_DISABLED: "true"
             # no documented health endpoint, so probe the socket rather than
