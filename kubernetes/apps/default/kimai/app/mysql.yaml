@@ -20,9 +20,16 @@ spec:
           app:
             image:
               repository: mysql
-              # 8.4 LTS. Your desktop's 8.3 is an EOL "innovation" release; a
-              # mysqldump from 8.3 restores into 8.4 cleanly, and the kimai
-              # DATABASE_URL pins serverVersion=8.4.0 to match.
+              # Pinned to the 8.4 LTS line (premier support to 2029-04). Do NOT take
+              # Renovate's 26.x bumps: MySQL moved to calendar versioning in 2026, and
+              # "an LTS release cannot skip a lineage" -- 8.4 must go via 9.7 LTS first,
+              # so a tag swap is an UNSUPPORTED upgrade path, not merely a risky one.
+              # The 26.x releases are ~3-month Innovation builds besides.
+              #
+              # Correcting an earlier comment here: neither of these is the blocker.
+              # Kimai accepts "MySQL >= 8.4 or newer", and DATABASE_URL's serverVersion
+              # is only a Doctrine platform hint, never checked against the live server
+              # (DBAL ships no MySQL9Platform, so 8.4.0 picks what it would anyway).
               tag: "8.4"
             env:
               # Non-secret bootstrap; passwords come from kimai-mysql-secret.
