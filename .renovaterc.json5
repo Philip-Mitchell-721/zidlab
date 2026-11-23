@@ -84,6 +84,15 @@
       automerge: false,
     },
     {
+      // Scoped by path so a future app's MySQL is unaffected, and deliberately WITHOUT
+      // an allowedVersions ceiling: future LTS releases live inside the calendar train
+      // too (MySQL's docs cite "28.4.0 LTS"), so a ceiling would hide those forever.
+      description: "Kimai's MySQL needs a stepwise migration (8.4 to 9.7 LTS, then the calendar train), never a tag swap",
+      matchFileNames: ["kubernetes/apps/default/kimai/**"],
+      matchPackageNames: ["mysql"],
+      dependencyDashboardApproval: true,
+    },
+    {
       matchUpdateTypes: ["major"],
       semanticCommitType: "feat",
       commitMessagePrefix: "{{semanticCommitType}}({{semanticCommitScope}})!:",
