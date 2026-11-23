@@ -165,11 +165,15 @@
     {
       description: "Group Talos + Kubernetes with their mise clients",
       groupName: "talos-and-kubernetes",
+      // NB: matchPackageNames matches packageName, not depName. The mise manager
+      // strips the "aqua:" backend prefix, so depName "aqua:siderolabs/talos"
+      // has packageName "siderolabs/talos". Matching the prefixed form silently
+      // fails and the tools fall out of the group.
       matchPackageNames: [
         "ghcr.io/siderolabs/installer",
         "ghcr.io/siderolabs/kubelet",
-        "aqua:siderolabs/talos",
-        "aqua:kubernetes/kubernetes/kubectl",
+        "siderolabs/talos",
+        "kubernetes/kubernetes/kubectl",
       ],
       group: {
         commitMessageTopic: "{{{groupName}}} group",
