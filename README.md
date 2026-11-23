@@ -100,7 +100,9 @@ edit YAML → PR → CI renders + diffs the manifests → merge → webhook → 
 CI runs [flux-local](https://github.com/allenporter/flux-local), which renders every
 HelmRelease and Kustomization and diffs it against the branch, so a broken manifest fails
 the PR rather than the cluster. [Renovate](https://www.mend.io/renovate) opens dependency
-PRs on a weekly schedule.
+PRs each weekend. Routine bumps (GitHub Actions, app image patches) merge themselves once
+that check is green; Helm charts, major versions and anything cluster-critical wait for a
+review. Nothing is pushed straight to `main`.
 
 ---
 
@@ -135,8 +137,10 @@ task talos:apply-node IP=<node-ip> MODE=auto
 ## Updating Talos and Kubernetes versions
 
 > [!TIP]
-> Set `talosVersion` / `kubernetesVersion` in `talenv.yaml` first. Renovate usually opens
-> this PR for you.
+> Set `talosVersion` / `kubernetesVersion` in `talenv.yaml` first. Renovate prepares this
+> PR for you, but holds it until you tick its box on the Dependency Dashboard issue —
+> Talos, Kubernetes and their `talosctl`/`kubectl` clients arrive together in one PR,
+> because merging changes nothing until you run the upgrade tasks below.
 
 ```sh
 # One node at a time. Wait for Ready before moving to the next.
