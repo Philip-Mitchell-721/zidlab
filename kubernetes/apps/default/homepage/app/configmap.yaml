@@ -87,9 +87,6 @@ data:
 
   bookmarks.yaml: |
     - Homelab:
-        - Repo:
-            - abbr: GH
-              href: https://github.com/
         - Homepage docs:
             - abbr: HP
               href: https://gethomepage.dev/
@@ -286,3 +283,10 @@ data:
             description: Notification fan-out
             # LAN-only by design; the tile is a link to its config UI. No widget
             # type exists, and Alertmanager bypasses Apprise entirely (ntfy bridge).
+        - zidlab:
+            icon: github-light.png
+            href: https://github.com/Philip-Mitchell-721/zidlab
+            description: Cluster GitOps repo
+            # No GitHub service widget exists in Homepage (gitea/gitlab only),
+            # so this is link-only. dashboard-icons uses the "-light" suffix for
+            # marks meant to sit on dark backgrounds, which is this theme.
