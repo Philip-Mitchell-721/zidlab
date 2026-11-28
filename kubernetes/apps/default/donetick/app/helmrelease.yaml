@@ -19,7 +19,7 @@ spec:
           app:
             image:
               repository: docker.io/donetick/donetick
-              tag: v0.1.76
+              tag: v0.1.89
             env:
               TZ: America/New_York
               # loads /config/selfhosted.yaml from the image; any key in it is
