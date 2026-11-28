@@ -17,7 +17,7 @@ spec:
           app:
             image:
               repository: docker.io/caronc/apprise
-              tag: v1.5.1
+              tag: v1.5.4
             env:
               TZ: America/New_York
               # Persist named configs by key under /config/store.
